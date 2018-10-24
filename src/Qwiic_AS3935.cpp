@@ -10,9 +10,10 @@
 
 #include "Qwiic_AS3935.h"
 
-Qwiic_AS3935::Qwiic_AS3935()
+Qwiic_AS3935::Qwiic_AS3935(byte addr)
 {
   //Need an I2C setting and an SPI setting.
+  _address = addr
 }
 
 Qwiic_AS3935::begin()
@@ -22,6 +23,7 @@ Qwiic_AS3935::begin()
     //settings, number of lightning strikes, watchdog threshold, masking
     //disturbers, antenna tuning, indoor/outdoor operation and the noise 
     //level threshold (AFE_GAIN BOOST)
+  return 1;
 }
 
 // Could I write a function (maybe in example code) that would try to determine that
@@ -48,6 +50,7 @@ Qwiic_AS3935::powerDown()
 // Indoor and outdoor settings i.e. the antenna gain or sensitivity to events. 
 Qwiic_AS3935::setAFEGain()
 {
+  
 }
 
 // You'd want to unmask to help determine a good threshold.
@@ -95,5 +98,15 @@ Qwiic_AS3935::antennaTuning()
 
 // The frequency of the oscillators can be sent over the IRQ pin. 
 Qwiic_AS3935::displayOscillatorSettings()
+{
+}
+
+Qwiic_AS3935::writeRegister(reg)
+{
+	Wire.beginTransmission(_address); 
+	Wire.write(
+}
+
+Qwiic_AS3935::readRegister()
 {
 }
