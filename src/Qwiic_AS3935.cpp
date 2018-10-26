@@ -42,6 +42,7 @@ Qwiic_AS3935::begin()
 // guildline in the universe???
 Qwiic_AS3935::spikeRejection()//better name: spike reduction?
 {
+  
 }
 //Will consume 1-2uA. If the board is powered down the the TRCO will need to be
 //recalibrated. REG0x08[5] = 1, wait 2 ms, REG0x08[5] = 0.
@@ -53,38 +54,36 @@ Qwiic_AS3935::powerDown()
 Qwiic_AS3935::setAFEGain(byte _sensitivity)
 {
   // Anttena gain is located in bits [5:1] 
-  // Clear the bits. 
-  byte _val;
-  _val = readRegister(AFE_GAIN, 1);
-  _val &= ~(GAIN_MASK); 
+  // Sensitivy settings range from 0 - 10
+  // Datasheet specifies 9 as "indoor" (larger threshold) and outdoor with
+  // greater sensitivity (lower threshold) as 7. 
+  Wire.beginTransmission(_address); 
+  Wire.write(THRESHOLD); 
+  Wire.write(THRESHOLD &= ~(GAIN_MASK << 1)); 
 
-  if(_sensitivity == INDOOR) //12
-    writeRegister(AFE_GAIN, INDOOR); 
-  else if(_sensitivity == OUTDOOR)//14 
-    writeRegister(AFE_GAIN, OUTDOOR); 
-  else 
-    writeRegister(AFE_GAIN, _sensitivity); 
+  if(_sensitiviy > 10)
+    return; 
+
+  Wire.write(THRESHOLD |= (_sensitiviy << 1)); 
+  Wire.endTransmission(); 
+
 }
 
 // You'd want to unmask to help determine a good threshold,but I think in
 // general this register should be off by default. It is on by manufacturer's
 // default. 
-Qwiic_AS3935::maskDisturber(byte state)
+Qwiic_AS3935::maskDisturber(byte _state)
 {
   // Register 0x03 bit 5 masks disturbers, hich are determined by the IC to be
   // non-lightning events. 
-  // Get register and clear corresonding bit. 
-  byte _maskState; 
-  _maskState = readRegister(INT_MASK, 1);
-  _maskState &= ~(1<<5);
+  if(_state != 0 || _state != 1)
+    return; 
 
-  // Set the register according to user's input. 
-  if( state == 0 )
-    writeRegister(INT_MASK, _maskState); 
-  if( state == 1 ){
-    _maskState |= 1<<5; 
-    writeRegister(INT_MASK, _maskState); 
-  }
+  Wire.beginTransmission(_address); 
+  Wire.write(INT_MASK_ANT); 
+  Wire.write(INT_MASK_ANT &= ~(1<<5)); 
+  Wire.write(INT_MASK_ANT |= (_state << 5);
+  Wire.endTransmission(); 
 }
 
 // When there is an event that exceeds the threshold, the register is written
@@ -95,14 +94,8 @@ Qwiic_AS3935::readInterruptReg()
 {
     //The first 4 bits of this register are the interrupt
     byte __interValue; 
-    _interValue = readRegister(INT_MASK, 15, 4); //Value 1111 or first 4 bits
-
-    if(_interValue == NOISE_TO_HIGH) 
-      Serial.println("Noisy."); //Think of something better
-    else if(_interValue = DISTURBER_DETECT)
-      Serial.println("Detected Disturber, not Lightning"); 
-    else
-      Serial.println("Lightning Detected!"); 
+    _interValue = readRegister(INT_MASK_ANT, 15, 4); //Value 1111 or first 4 bits
+    return(_interValue); 
 }
 
 // This is the floor that determines whether a distruber is a disturber 
@@ -118,20 +111,17 @@ Qwiic_AS3935::setNoiseLevel()
 Qwiic_AS3935::lightningThreshold(byte _strikes)
 {
   //Bits [5:4] hold the lightning strike data. 
-  byte lightVal;
-  lightVal = readRegister(LIGHTNING); 
-  lightVal &= ~((1<<5)|(1<<4)); //Clear the registers
-  if( _strikes == 1)
-    writeRegister(LIGHTNING, lightVal); 
+  Wire.beginTransmission(_address); 
+  Wire.write(LIGHTNING); 
+  // Clears the register which coincidentally also is the default: 1 lightning
+  // strike.
+  Wire.write(LIGHTNING &= ~((1<<5)|(1<<4)));
   if( _strikes == 5)
-    lightVal |= (1<<4); 
-    writeRegister(LIGHTNING, lightVal); 
+    Wire.write(LIGHTNING |= (1<<4));  
   if( _strikes == 9)
-    lightVal |= (1<<5); 
-    writeRegister(LIGHTNING, lightVal); 
+    Wire.write(LIGHTNING |= (1<<5)); 
   if( _strikes == 16)
-    lightVal |= (1<<5)|(1<<4); 
-    writeRegister(LIGHTNING, lightVal); 
+    Wire.write(LIGHTNING |= ((1<<5)|(1<<4)));
 }
 
 // This is a simple binary number of the distance in km to the front of the
@@ -139,7 +129,6 @@ Qwiic_AS3935::lightningThreshold(byte _strikes)
 Qwiic_AS3935::distanceToStorm()
 {
   byte _dist = readRegister(DISTANCE, 1); 
-  _dist &= DISTANCE_MASK; 
   return(_dist); 
 }
 
@@ -148,10 +137,26 @@ Qwiic_AS3935::clearStatistics()
 {
 }
 
-// This will be kept private since the antenna values are fixed.This will
-// probably be kept to default but we'll determine through test. 
-Qwiic_AS3935::antennaTuning()
+// Probably be kept to default but we'll determine through test. 
+// I should probably determine best tuning given gain settings because
+// datasheet doesn't give any. 
+Qwiic_AS3935::antennaTuning(byte _divisionRatio)
 {
+  // The LCO_FDIV occupies bits [7:6]
+  // Default for the Antenna is a division ratio of 16. 
+  Wire.beginTransmission(_address); 
+  Wire.write(INT_MASK_ANT); 
+  Wire.write(INT_MASK_ANT &= ~((1<<7)|(1<<6))); 
+
+  // Already cleared the register to the default above.
+  if(_divisionRatio == 16) 
+    return;
+  if(_divisionRatio == 32) 
+    Wire.write(INT_MASK_ANT |= (1<<6)); 
+  else if(_divisionRatio == 64) 
+    Wire.write(INT_MASK_ANT |= (1<<7)); 
+  else if(_divisionRatio == 128) 
+    Wire.write(INT_MASK_ANT |= (1<<7)|(1<<6)); 
 }
 
 // The frequency of the oscillators can be sent over the IRQ pin. 
@@ -159,16 +164,10 @@ Qwiic_AS3935::displayOscillatorSettings()
 {
 }
 
-Qwiic_AS3935::writeRegister(byte reg, _value)
+Qwiic_AS3935::writeRegister(byte reg)
 {
 	Wire.beginTransmission(_address); 
-  // Move pointer to this memory address, different than just sending an I2C
-  // command.... 
 	Wire.write(reg);
-  // Write register, will this maintain the pointer, or will I need a register
-  // -1...
-  Wire.write(reg &= 0x0); //Clear register
-  Wire.write(reg |= _value); //Write new register
   Wire.endTransmission(); 
 }
 
