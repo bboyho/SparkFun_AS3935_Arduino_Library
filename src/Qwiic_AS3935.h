@@ -1,4 +1,3 @@
-
 #include "Wire.h"
 #include "SPI.h"
 
@@ -16,7 +15,7 @@ enum AS3935_Register {
   ENERGY_LIGHT_MSB  = 0x05,
   ENERGY_LIGHT_MMSB = 0x06,
   DISTANCE          = 0x07,
-  FREQ_IRQ          = 0x08,
+  FREQ_DISP_IRQ     = 0x08,
 
 };
 
@@ -26,9 +25,27 @@ enum AS3935_Register {
 #define INDOOR  0x12
 #define OUTDOOR  0xE
 #define GAIN_MASK 0xF
+#define SPIKE_MASK 0xF
 #define DISTANCE_MASK 0x1F
+#define FLOOR_MASK 0x07
+
 class Qwiic_AS3935
 {
+  public: 
+
+    void Qwiic_AS3935::powerDown();
+    void Qwiic_AS3935::indoorOutdoorSetting( _setting);
+    void Qwiic_AS3935::watchdogThreshold(uint8_t _sensitivity);
+    void Qwiic_AS3935::setNoiseLevel(_floor);
+    void spikeReduction(_spSensitivity);
+    void Qwiic_AS3935::lightningThreshold(uint8_t _strikes);
+    void Qwiic_AS3935::clearStatistics();
+    uint8_t Qwiic_AS3935::readInterruptReg();
+    void Qwiic_AS3935::maskDisturber(uint8_t _state);
+    void Qwiic_AS3935::antennaTuning(uint8_t _divisionRatio);
+    uint8_t Qwiic_AS3935::distanceToStorm();
+    void Qwiic_AS3935::displayOscillatorSettings(_state, _osc);
+    uint8_t Qwiic_AS3935::readRegister(uint8_t reg, uint8_t _len);
 
 };
 #endif
