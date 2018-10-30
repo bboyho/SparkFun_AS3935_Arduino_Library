@@ -46,6 +46,10 @@ class Qwiic_AS3935
     uint8_t Qwiic_AS3935::distanceToStorm();
     void Qwiic_AS3935::displayOscillatorSettings(_state, _osc);
     uint8_t Qwiic_AS3935::readRegister(uint8_t reg, uint8_t _len);
+  
+  private:
+
+    TwoWire *_i2cPort; 
 
 };
 #endif
