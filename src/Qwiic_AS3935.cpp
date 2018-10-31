@@ -17,7 +17,7 @@ Qwiic_AS3935::Qwiic_AS3935()
   // Communication selection?
 }
 
-Qwiic_AS3935::begin(uint8_t address, TwoWire &wirePort)
+Qwiic_AS3935::begin( uint8_t address, TwoWire &wirePort )
 {
   _address = address; 
   _i2cPort = &wirePort
@@ -26,211 +26,190 @@ Qwiic_AS3935::begin(uint8_t address, TwoWire &wirePort)
   return 1;
 }
 
-
-
-
-// Occupies Reg0x00, bit[0].
+// REG0x00, bit[0], manufacturer default: 0. 
 // The product consumes 1-2uA while powered down. If the board is powered down 
 // the the TRCO will need to be recalibrated: REG0x08[5] = 1, wait 2 ms, REG0x08[5] = 0.
 void Qwiic_AS3935::powerDown()
 {
-  _i2cPort->beginTransmission(_address);     
-  _i2cPort->write(AFE_GAIN);
-  _i2cPort->write(AFE_GAIN |= 0x1); 
+  writeRegister(AFE_GAIN, 0x1, 1, 0); 
 }
 
-// This function modifies the Register0x00, bits [1:5]
-void Qwiic_AS3935::indoorOutdoorSetting( _setting)
+// REG0x00, bits [5:1], manufacturer default: 10010 (INDOOR). 
+// This funciton changes toggles the chip's settings for Indoors and Outdoors. 
+void Qwiic_AS3935::indoorOutdoorSetting( uint8_t _setting )
 {
   if(_setting != INDOOR | _setting != OUTDOOR)
     return;
 
-  _i2cPort->beginTransmission(_address); 
-  _i2cPort->write(AFE_GAIN);
-  _i2cPort->write(AFE_GAIN &= ~(GAIN_MASK << 1))
   if(_setting == INDOOR)
-    _i2cPort->write(AFE_GAIN |= INDOOR);   
+    writeRegister(AFE_GAIN, GAIN_MASK, INDOOR, 1); 
   if(_setting == OUTDOOR)
-    _i2cPort->write(AFE_GAIN |= OUTDOOR);   
-  writeRegister(AFE_GAIN, GAIN_MASK, INDOOR, 1); 
+    writeRegister(AFE_GAIN, GAIN_MASK, OUTDOOR, 1); 
 }
 
-//  Occupies Reg0x00 bits[5:1]. 
-//  The Watchdog Threshold is located in register0x01 bits [3:0] and settings range from 0-10.
-// This setting determines the level of threshold for events that constitue a
-// distruber vs lightning. Increasing this threshold reduces the chip's
-// sensitivity to far away events.
-void Qwiic_AS3935::watchdogThreshold(uint8_t _sensitivity)
+// REG0x01, bits[3:0], manufacturer default: 0010 (2). 
+// This setting determines the threshold for events that trigger the 
+// IRQ Pin.  
+void Qwiic_AS3935::watchdogThreshold( uint8_t _sensitivity )
 {
-  if(_sensitiviy > 10)// 10 is the max sensitivity setting
+  if(_sensitiviy < 0 | _sensitiviy > 10)// 10 is the max sensitivity setting
     return; 
 
-  _i2cPort->beginTransmission(_address); 
-  _i2cPort->write(THRESHOLD); 
-  _i2cPort->write(THRESHOLD &= ~(GAIN_MASK << 1)); //Clear register
-  _i2cPort->write(THRESHOLD |= (_sensitiviy << 1));//Apply setting
-  _i2cPort->endTransmission(); 
   writeRegister(THRESHOLD, GAIN_MASK, _sensitiviy, 1); 
 }
-    //Default Settings here and then many functions below to change those
-    //settings, number of lightning strikes, watchdog threshold, masking
-    //disturbers, antenna tuning, indoor/outdoor operation and the noise 
-    //level threshold (AFE_GAIN BOOST)
 
-// This is the floor that determines whether a distruber is a disturber 
-// or actual lightning. This is interconnected with the AFE gain and the watchdog
-// sensitivity. This option is found in REG0x01, bits [6:4] and the default setting is  
-// 010 or 2. 
-void Qwiic_AS3935::setNoiseLevel(_floor)
+// REG0x01, bits [6:4], manufacturer default: 010 (2).
+// The noise floor level is compared to a known reference voltage. If this
+// level is exceeded the chip will issue an interrupt to the IRQ pin,
+// broadcasting that it can not operate properly due to noise (INT_NH).
+// Check datasheet for specific noise level tolerances when setting this register. 
+void Qwiic_AS3935::setNoiseLevel( uint8_t _floor )
 {
   if(_floor < 0 | _floor > 7)
     return; 
-
-  _i2cPort->beginTransmission(_address); 
-  _i2cPort->write(THRESHOLD); 
-  _i2cPort->write(THRESHOLD &= ~(FLOOR_MASK)); //Clear the register
-  _i2cPort->write(THRESHOLD |= (_floor << 4);  //Write the floor setting
-  _i2cPort->endTransmission();  
   
   writeRegister(THRESHOLD, FLOOR_MASK, _floor, 4); 
-
 }
 
-void Qwiic_AS3935::spikeReduction(_spSensitivity)
+// REG0x02, bits [3:0], manufacturer default: 0010 (2).
+// This setting, like the watchdog threshold, can help determine between false
+// events and actual lightning. The shape of the spike is analyzed during the
+// chip's signal validation routine. Increasing this value increases robustness
+// at the cost of sensitivity to distant events. 
+void Qwiic_AS3935::spikeReduction( uint8_t _spSensitivity )
 {
-  //Sensitivity ranges from 0-11 and occupy bits [3:0], default is 2. 
   if(_spSensitivity < 0 | _spSensitivity > 11)
     return; 
-
-  _i2cPort->beginTransmission(_address); 
-  _i2cPort->write(LIGHTNING); 
-  _i2cPort->write(LIGHTNING &= ~(SPIKE_MASK); 
-  _i2cPort->write(LIGHTNING |= (_spSensitivity)); 
-  _i2cPort->endTransmission(); 
 
   writeRegister(LIGHTNING, SPIKE_MASK, _spSensitivity, 0); 
 }
 
 
-// The number of lightning events before IRQ is set high. The window of time
-// before thie number of detected lightning events is 15 minutes. 
-// Number of lightning strikes can be 1,5,9, and 16. 
-void Qwiic_AS3935::lightningThreshold(uint8_t _strikes)
+// REG0x02, bits [5:4], manufacturer default: 0 (single lightning strike).
+// The number of lightning events before IRQ is set high. 15 minutes is The 
+// window of time before the number of detected lightning events is reset. 
+// The number of lightning strikes can be set to 1,5,9, or 16. 
+void Qwiic_AS3935::lightningThreshold( uint8_t _strikes )
 {
 
-  if(_strikes != 5 | _strikes != 9 | _strikes != 16) 
+  if(__strikes != 1 | strikes != 5 | _strikes != 9 | _strikes != 16) 
     return; 
 
-  _i2cPort->beginTransmission(_address); 
-  _i2cPort->write(LIGHTNING); 
-  _i2cPort->write(LIGHTNING &= ~((1<<5)|(1<<4)));
-
+  if( _strikes == 1)
+    writeRegister(LIGHTNING, ((1<<5)|(1<<4)), 0, 4); //Demonstrative
   if( _strikes == 5)
     writeRegister(LIGHTNING, ((1<<5)|(1<<4)), 1, 4); 
-    _i2cPort->write(LIGHTNING |= (1<<4));  
   if( _strikes == 9)
     writeRegister(LIGHTNING, ((1<<5)|(1<<4)), 1, 5); 
-    _i2cPort->write(LIGHTNING |= (1<<5)); 
   if( _strikes == 16)
     writeRegister(LIGHTNING, ((1<<5)|(1<<4)), (1<<5)|(1<<4), 4); 
-    _i2cPort->write(LIGHTNING |= ((1<<5)|(1<<4)));
 }
 
 
-// No explanation of this register in the datasheet.
-void Qwiic_AS3935::clearStatistics()
+// REG0x02, bit [6], manufacturer default: 1. 
+// This register clears the number of lightning strikes that has been read in
+// the last 15 minute block. 
+void Qwiic_AS3935::clearStatistics(bool _clearStat)
 {
+  if(_clearStat != true)
+    return;
+  //Write high, then low, then high to clear.
+  writeRegister(LIGHTNING, (1<<6), 1, 6)
+  writeRegister(LIGHTNING, (1<<6), 0, 6)//Demonstrative
+  writeRegister(LIGHTNING, (1<<6), 1, 6)
 }
-// When there is an event that exceeds the threshold, the register is written
-// with the type of event. This consists of three messages: INT_NH (noise level too HIGH)
-// which persists until it isn't, INT_D (disturber detected), INT_L(Lightning
-// Interrupt).
+
+// REG0x03, bits [3:0], manufacturer default: 0. 
+// When there is an event that exceeds the watchdog threshold, the register is written
+// with the type of event. This consists of two messages: INT_D (disturber detected) and 
+// INT_L (Lightning detected). A third interrupt INT_NH (noise level too HIGH) 
+// indicates that the noise level has been exceeded and will persist until the
+// noise has ended. 
 uint8_t Qwiic_AS3935::readInterruptReg()
 {
-    //The first 4 bits of this register are the interrupt
     uint8_t __interValue; 
     _interValue = readRegister(INT_MASK_ANT, 15, 4); //Value 1111 or first 4 bits
     return(_interValue); 
 }
 
-// You'd want to unmask to help determine a good threshold,but I think in
-// general this register should be off by default. It is on by manufacturer's
-// default. 
-void Qwiic_AS3935::maskDisturber(uint8_t _state)
+// REG0x03, bit [5], manufacturere default: 0.
+// This setting will change whether or not disturbers trigger the IRQ Pin. 
+void Qwiic_AS3935::maskDisturber(bool _state)
 {
-  // Register 0x03 bit 5 masks disturbers, hich are determined by the IC to be
-  // non-lightning events. 
-  if(_state != 0 || _state != 1)
-    return; 
-
-  _i2cPort->beginTransmission(_address); 
-  _i2cPort->write(INT_MASK_ANT); 
-  _i2cPort->write(INT_MASK_ANT &= ~(1<<5)); 
-  _i2cPort->write(INT_MASK_ANT |= (_state << 5);
-  _i2cPort->endTransmission(); 
+  if(_state == true)
+    writeRegister(INT_MASK_ANT, (1<<5), 1, 5); 
+  if(_state == false)
+    writeRegister(INT_MASK_ANT, (1<<5), 0, 5); //Demonstrative
+  
 }
 
-// Probably be kept to default but we'll determine through test. 
-// I should probably determine best tuning given gain settings because
-// datasheet doesn't give any. 
+// REG0x03, bit [7:6], manufacturer default: 0 (16 division ratio). 
+// The antenna is designed to resonate at 500kHz and so can be tuned with the
+// following setting. The accuracy of the antenna must be within 3.5 percent of
+// that value for proper signal validation and distance estimation.
 void Qwiic_AS3935::antennaTuning(uint8_t _divisionRatio)
 {
-  // The LCO_FDIV occupies bits [7:6]
-  // Default for the Antenna is a division ratio of 16. 
-  _i2cPort->beginTransmission(_address); 
-  _i2cPort->write(INT_MASK_ANT); 
-  _i2cPort->write(INT_MASK_ANT &= ~((1<<7)|(1<<6))); 
-
-  // Already cleared the register to the default above.
-  if(_divisionRatio == 16) 
+  if(_divisionRatio != 16 | _divisionRatio != 32 | _divisionRatio != 64 | _divisionRatio != 128)  
     return;
+
+  if(_divisionRatio == 16) 
+    writeRegister(INT_MASK_ANT, ((1<<7)|(1<<6)), 0, 6); //Demonstrative
   if(_divisionRatio == 32) 
-    _i2cPort->write(INT_MASK_ANT |= (1<<6)); 
+    writeRegister(INT_MASK_ANT, ((1<<7)|(1<<6)), 1, 6); 
   else if(_divisionRatio == 64) 
-    _i2cPort->write(INT_MASK_ANT |= (1<<7)); 
+    writeRegister(INT_MASK_ANT, ((1<<7)|(1<<6)), 1, 7); 
   else if(_divisionRatio == 128) 
-    _i2cPort->write(INT_MASK_ANT |= (1<<7)|(1<<6)); 
+    writeRegister(INT_MASK_ANT, ((1<<7)|(1<<6)), ((1<<7)|(1<<6)), 6); 
 }
-// This is a simple binary number of the distance in km to the front of the
-// storm, not to the distance to lightning strike. 
+// REG0x07, bit [5:0], manufacturer default: 0. 
+// This register holds the distance to the front of the storm and not the
+// distance to a lightning strike.  
 uint8_t Qwiic_AS3935::distanceToStorm()
 {
   uint8_t _dist = readRegister(DISTANCE, 1); 
   return(_dist); 
 }
-
-// The frequency of the oscillators can be sent over the IRQ pin. 
-//  LCO -  Frequency of the Antenna
-//  TRCO - Timer RCO Oscillators 1.1MHz
-//  SRCO - System RCO at 32.768kHz
-void Qwiic_AS3935::displayOscillatorSettings(_state, _osc)
+// REG0x08, bits [5,6,7], manufacturer default: 0. 
+// This will send the frequency of the oscillators to the IRQ pin. 
+//  _osc 1, bit[5] = TRCO - Timer RCO Oscillators 1.1MHz
+//  _osc 2, bit[6] = SRCO - System RCO at 32.768kHz
+//  _osc 3, bit[7] = LCO - Frequency of the Antenna
+void Qwiic_AS3935::displayOscillator(bool _state, uint8_t _osc)
 {
-  if(_state > 1 | _osc > 3) 
+  if(_osc < 0 | _osc > 3) 
     return;
 
-  //Pin 7 enables/disables diplaying the oscillator data on the IRQ Pin.
-  _i2cPort->beginTransmission(_address);
-  _i2cPort->write(FREQ_DISP_IRQ); 
+  if(_state == true){
+    if(_osc == 1)
+      writeRegister(FREQ_DISP_IRQ, OSC_MASK, 1, 5); 
+    if(_osc == 2)
+      writeRegister(FREQ_DISP_IRQ, OSC_MASK, 1, 6); 
+    if(_osc == 3)
+      writeRegister(FREQ_DISP_IRQ, OSC_MASK, 1, 7); 
+  }
+  if(_state == false){
+      writeRegister(FREQ_DISP_IRQ, OSC_MASK, 0, 5); //Demonstrative
+    if(_osc == 2)
+      writeRegister(FREQ_DISP_IRQ, OSC_MASK, 0, 6); 
+    if(_osc == 3)
+      writeRegister(FREQ_DISP_IRQ, OSC_MASK, 0, 7); 
+  }
+}
+// REG0x08, bits [3:0], manufacturer default: 0. 
+// This setting will add capacitance to the series RLC antenna on the product.
+// It's possible to add 0-120pF in steps of 8pF to the antenna. 
+void Qwiic_AS3935::tuneCap(uint8_t _farad)
+{
+  if(_farad > 15)
+   return;
 
-  if(_osc == 1){
-    if(_state == 0);  
-      _i2cPort->write(FREQ_DISP_IRQ,  
-    if(_state == 1);  
-  }
-  if(_osc == 2){
-    if(_state == 0);  
-      return
-    if(_state == 1);  
-  }
-  if(_osc == 3){
-    if(_state == 0);  
-      return
-    if(_state == 1);  
-  {    
-  _i2cPort->write(FREQ_DISP_IRQ |= (1<<7)); 
+  writeRegister(FREQ_DISP_IRQ, CAP_MASK, _farad, 0);    
 }
 
-Qwiic_AS3935::writeRegister(uint8_t _reg, uint8_t _mask, uint8_t _bits, uint8_t _startPosition)
+// This function handles all I2C write commands. It takes the register to write
+// to, then will mask the part of the register that coincides with the
+// setting, and then write the given bits to the register. 
+void Qwiic_AS3935::writeRegister(uint8_t _reg, uint8_t _mask, uint8_t _bits, uint8_t _startPosition)
 {
 	_i2cPort->beginTransmission(_address); 
 	_i2cPort->write(_reg);
@@ -239,13 +218,12 @@ Qwiic_AS3935::writeRegister(uint8_t _reg, uint8_t _mask, uint8_t _bits, uint8_t 
   _i2cPort->endTransmission(); 
 }
 
+// This function reads the given register. 
 uint8_t Qwiic_AS3935::readRegister(uint8_t reg, uint8_t _len)
 {
     _i2cPort->beginTransmission(_address); 
     _i2cPort->write(reg); //Moves pointer to register in question and writes to it. 
     _i2cPort->endTransmission(false); //This tells the product 
-    // Most cases this will be a single uint8_t except for Energy of Lightning
-    // Register.
     _i2cPort->requestFrom(_address, _len); 
     uint8_t _regValue = _i2cPort->read(reg); 
     return(_regValue);
