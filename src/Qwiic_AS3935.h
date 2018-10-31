@@ -1,8 +1,9 @@
+#ifndef Sparkfun_AS3935_h
+#define Sparkfun_AS3935_h
+
 #include "Wire.h"
 #include "SPI.h"
-
-#ifndef AS3935.h
-#define AS3935.h
+#include "Arduino.h"
 
 enum AS3935_Register {
 
@@ -17,6 +18,8 @@ enum AS3935_Register {
   FREQ_DISP_IRQ     = 0x08,
 
 };
+
+#define AS3935_DEFAULT_ADDRESS 0x01
 
 #define NOISE_TO_HIGH     0x01 //B00000001
 #define DISTURBER_DETECT  0x04 //B00000100

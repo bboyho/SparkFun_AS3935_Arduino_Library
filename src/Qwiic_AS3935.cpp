@@ -9,16 +9,17 @@
 */
 
 
-#include "Qwiic_AS3935.h"
+#include "Sparkfun_AS3935.h"
 
-Qwiic_AS3935::Qwiic_AS3935()
+Sparkfun_AS3935::Sparkfun_AS3935()
 {
   //Default settings here
   // Communication selection?
 }
 
-Qwiic_AS3935::begin( uint8_t address, TwoWire &wirePort )
+Sparkfun_AS3935::begin( uint8_t address, TwoWire &wirePort )
 {
+  delay(4); 
   _address = address; 
   _i2cPort = &wirePort
   _i2cPort->begin(); 
@@ -29,14 +30,14 @@ Qwiic_AS3935::begin( uint8_t address, TwoWire &wirePort )
 // REG0x00, bit[0], manufacturer default: 0. 
 // The product consumes 1-2uA while powered down. If the board is powered down 
 // the the TRCO will need to be recalibrated: REG0x08[5] = 1, wait 2 ms, REG0x08[5] = 0.
-void Qwiic_AS3935::powerDown()
+void Sparkfun_AS3935::powerDown()
 {
   writeRegister(AFE_GAIN, 0x1, 1, 0); 
 }
 
 // REG0x00, bits [5:1], manufacturer default: 10010 (INDOOR). 
 // This funciton changes toggles the chip's settings for Indoors and Outdoors. 
-void Qwiic_AS3935::indoorOutdoorSetting( uint8_t _setting )
+void Sparkfun_AS3935::indoorOutdoorSetting( uint8_t _setting )
 {
   if(_setting != INDOOR | _setting != OUTDOOR)
     return;
@@ -50,7 +51,7 @@ void Qwiic_AS3935::indoorOutdoorSetting( uint8_t _setting )
 // REG0x01, bits[3:0], manufacturer default: 0010 (2). 
 // This setting determines the threshold for events that trigger the 
 // IRQ Pin.  
-void Qwiic_AS3935::watchdogThreshold( uint8_t _sensitivity )
+void Sparkfun_AS3935::watchdogThreshold( uint8_t _sensitivity )
 {
   if(_sensitiviy < 0 | _sensitiviy > 10)// 10 is the max sensitivity setting
     return; 
@@ -63,7 +64,7 @@ void Qwiic_AS3935::watchdogThreshold( uint8_t _sensitivity )
 // level is exceeded the chip will issue an interrupt to the IRQ pin,
 // broadcasting that it can not operate properly due to noise (INT_NH).
 // Check datasheet for specific noise level tolerances when setting this register. 
-void Qwiic_AS3935::setNoiseLevel( uint8_t _floor )
+void Sparkfun_AS3935::setNoiseLevel( uint8_t _floor )
 {
   if(_floor < 0 | _floor > 7)
     return; 
@@ -76,7 +77,7 @@ void Qwiic_AS3935::setNoiseLevel( uint8_t _floor )
 // events and actual lightning. The shape of the spike is analyzed during the
 // chip's signal validation routine. Increasing this value increases robustness
 // at the cost of sensitivity to distant events. 
-void Qwiic_AS3935::spikeReduction( uint8_t _spSensitivity )
+void Sparkfun_AS3935::spikeReduction( uint8_t _spSensitivity )
 {
   if(_spSensitivity < 0 | _spSensitivity > 11)
     return; 
@@ -89,7 +90,7 @@ void Qwiic_AS3935::spikeReduction( uint8_t _spSensitivity )
 // The number of lightning events before IRQ is set high. 15 minutes is The 
 // window of time before the number of detected lightning events is reset. 
 // The number of lightning strikes can be set to 1,5,9, or 16. 
-void Qwiic_AS3935::lightningThreshold( uint8_t _strikes )
+void Sparkfun_AS3935::lightningThreshold( uint8_t _strikes )
 {
 
   if(__strikes != 1 | strikes != 5 | _strikes != 9 | _strikes != 16) 
@@ -109,7 +110,7 @@ void Qwiic_AS3935::lightningThreshold( uint8_t _strikes )
 // REG0x02, bit [6], manufacturer default: 1. 
 // This register clears the number of lightning strikes that has been read in
 // the last 15 minute block. 
-void Qwiic_AS3935::clearStatistics(bool _clearStat)
+void Sparkfun_AS3935::clearStatistics(bool _clearStat)
 {
   if(_clearStat != true)
     return;
@@ -125,7 +126,7 @@ void Qwiic_AS3935::clearStatistics(bool _clearStat)
 // INT_L (Lightning detected). A third interrupt INT_NH (noise level too HIGH) 
 // indicates that the noise level has been exceeded and will persist until the
 // noise has ended. 
-uint8_t Qwiic_AS3935::readInterruptReg()
+uint8_t Sparkfun_AS3935::readInterruptReg()
 {
     uint8_t __interValue; 
     _interValue = readRegister(INT_MASK_ANT, 15, 4); //Value 1111 or first 4 bits
@@ -134,7 +135,7 @@ uint8_t Qwiic_AS3935::readInterruptReg()
 
 // REG0x03, bit [5], manufacturere default: 0.
 // This setting will change whether or not disturbers trigger the IRQ Pin. 
-void Qwiic_AS3935::maskDisturber(bool _state)
+void Sparkfun_AS3935::maskDisturber(bool _state)
 {
   if(_state == true)
     writeRegister(INT_MASK_ANT, (1<<5), 1, 5); 
@@ -147,7 +148,7 @@ void Qwiic_AS3935::maskDisturber(bool _state)
 // The antenna is designed to resonate at 500kHz and so can be tuned with the
 // following setting. The accuracy of the antenna must be within 3.5 percent of
 // that value for proper signal validation and distance estimation.
-void Qwiic_AS3935::antennaTuning(uint8_t _divisionRatio)
+void Sparkfun_AS3935::antennaTuning(uint8_t _divisionRatio)
 {
   if(_divisionRatio != 16 | _divisionRatio != 32 | _divisionRatio != 64 | _divisionRatio != 128)  
     return;
@@ -164,7 +165,7 @@ void Qwiic_AS3935::antennaTuning(uint8_t _divisionRatio)
 // REG0x07, bit [5:0], manufacturer default: 0. 
 // This register holds the distance to the front of the storm and not the
 // distance to a lightning strike.  
-uint8_t Qwiic_AS3935::distanceToStorm()
+uint8_t Sparkfun_AS3935::distanceToStorm()
 {
   uint8_t _dist = readRegister(DISTANCE, 1); 
   return(_dist); 
@@ -174,7 +175,7 @@ uint8_t Qwiic_AS3935::distanceToStorm()
 //  _osc 1, bit[5] = TRCO - Timer RCO Oscillators 1.1MHz
 //  _osc 2, bit[6] = SRCO - System RCO at 32.768kHz
 //  _osc 3, bit[7] = LCO - Frequency of the Antenna
-void Qwiic_AS3935::displayOscillator(bool _state, uint8_t _osc)
+void Sparkfun_AS3935::displayOscillator(bool _state, uint8_t _osc)
 {
   if(_osc < 0 | _osc > 3) 
     return;
@@ -200,7 +201,7 @@ void Qwiic_AS3935::displayOscillator(bool _state, uint8_t _osc)
 // to help tune its resonance. The datasheet specifies being within 3.5 percent
 // of 500kHz to get optimal lightning detection and distance sensing.  
 // It's possible to add up to 120pF in steps of 8pF to the antenna. 
-void Qwiic_AS3935::tuneCap(uint8_t _farad)
+void Sparkfun_AS3935::tuneCap(uint8_t _farad)
 {
   if(_farad > 15)
    return;
@@ -214,7 +215,7 @@ void Qwiic_AS3935::tuneCap(uint8_t _farad)
 // This returns a 20 bit value that is the 'energy' of the lightning strike.
 // According to the datasheet this is only a pure value that doesn't have any
 // physical meaning. 
-void Qwiic_AS3935::lightningEnergy()
+void Sparkfun_AS3935::lightningEnergy()
 {
   uint8_t _lightBuf[3];
   _lightBuf[2] = readRegister(ENERGY_LIGHT_MMSB, 1);
@@ -228,7 +229,7 @@ void Qwiic_AS3935::lightningEnergy()
 // to, then will mask the part of the register that coincides with the
 // given register, and then write the given bits to the register starting at
 // the given start position.  
-void Qwiic_AS3935::writeRegister(uint8_t _reg, uint8_t _mask, uint8_t _bits, uint8_t _startPosition)
+void Sparkfun_AS3935::writeRegister(uint8_t _reg, uint8_t _mask, uint8_t _bits, uint8_t _startPosition)
 {
 	_i2cPort->beginTransmission(_address); 
 	_i2cPort->write(_reg);
@@ -238,7 +239,7 @@ void Qwiic_AS3935::writeRegister(uint8_t _reg, uint8_t _mask, uint8_t _bits, uin
 }
 
 // This function reads the given register. 
-uint8_t Qwiic_AS3935::readRegister(uint8_t reg, uint8_t _len)
+uint8_t Sparkfun_AS3935::readRegister(uint8_t reg, uint8_t _len)
 {
     _i2cPort->beginTransmission(_address); 
     _i2cPort->write(reg); //Moves pointer to register in question and writes to it. 
