@@ -5,7 +5,6 @@
 #define AS3935.h
 
 enum AS3935_Register {
-  //Most, if not all of these registers have many functions. 
 
 	AFE_GAIN          = 0x00,
   THRESHOLD         = 0x01,
@@ -19,17 +18,20 @@ enum AS3935_Register {
 
 };
 
-#define NOISE_TO_HIGH 0x01 //B00000001
-#define DISTURBER_DETECT 0x04 //B00000100
-#define LIGHTNING 0x08 //B00001000
-#define INDOOR  0x12
-#define OUTDOOR  0xE
-#define GAIN_MASK 0xF
-#define SPIKE_MASK 0xF
-#define DISTANCE_MASK 0x1F
-#define FLOOR_MASK 0x07
-#define OSC_MASK 0x07
-#define CAP_MASK 0x07
+#define NOISE_TO_HIGH     0x01 //B00000001
+#define DISTURBER_DETECT  0x04 //B00000100
+#define LIGHTNING         0x08 //B00001000
+#define INDOOR            0x12
+#define OUTDOOR           0xE
+
+// Masks for various registers, there are some redundant values that I kept 
+// for the sake of clarity in the code.
+#define GAIN_MASK         0xF
+#define SPIKE_MASK        0xF
+#define DISTANCE_MASK     0x1F
+#define FLOOR_MASK        0x07
+#define OSC_MASK          0x07
+#define CAP_MASK          0x07
 
 class Qwiic_AS3935
 {
@@ -96,15 +98,21 @@ class Qwiic_AS3935
     // This setting will add capacitance to the series RLC antenna on the product.
     // It's possible to add 0-120pF in steps of 8pF to the antenna. 
     void tuneCap(uint8_t _farad)
+    // LSB =  REG0x04, bits[7:0]
+    // MSB =  REG0x05, bits[7:0]
+    // MMSB = REG0x06, bits[4:0]
+    // This returns a 20 bit value that is the 'energy' of the lightning strike.
+    // According to the datasheet this is only a pure value that doesn't have any
+    // physical meaning. 
+    void Qwiic_AS3935::lightningEnergy()
+  
+  private:
     // This function handles all I2C write commands. It takes the register to write
     // to, then will mask the part of the register that coincides with the
     // setting, and then write the given bits to the register. 
     void writeRegister(uint8_t _reg, uint8_t _mask, uint8_t _bits, uint8_t _startPosition);
     // This function reads the given register. 
     uint8_t readRegister(uint8_t reg, uint8_t _len);
-  
-  private:
-
     TwoWire *_i2cPort; 
 
 };

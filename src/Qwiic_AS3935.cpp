@@ -196,8 +196,10 @@ void Qwiic_AS3935::displayOscillator(bool _state, uint8_t _osc)
   }
 }
 // REG0x08, bits [3:0], manufacturer default: 0. 
-// This setting will add capacitance to the series RLC antenna on the product.
-// It's possible to add 0-120pF in steps of 8pF to the antenna. 
+// This setting will add capacitance to the series RLC antenna on the product
+// to help tune its resonance. The datasheet specifies being within 3.5 percent
+// of 500kHz to get optimal lightning detection and distance sensing.  
+// It's possible to add up to 120pF in steps of 8pF to the antenna. 
 void Qwiic_AS3935::tuneCap(uint8_t _farad)
 {
   if(_farad > 15)
@@ -206,9 +208,26 @@ void Qwiic_AS3935::tuneCap(uint8_t _farad)
   writeRegister(FREQ_DISP_IRQ, CAP_MASK, _farad, 0);    
 }
 
+// LSB =  REG0x04, bits[7:0]
+// MSB =  REG0x05, bits[7:0]
+// MMSB = REG0x06, bits[4:0]
+// This returns a 20 bit value that is the 'energy' of the lightning strike.
+// According to the datasheet this is only a pure value that doesn't have any
+// physical meaning. 
+void Qwiic_AS3935::lightningEnergy()
+{
+  uint8_t _lightBuf[3];
+  _lightBuf[2] = readRegister(ENERGY_LIGHT_MMSB, 1);
+  _lightBuf[2] &= 0xF; //Only interested in the first four bits. 
+  _lightBuf[1] = readRegister(ENERGY_LIGHT_MSB, 1);
+  _lightBuf[0] = readRegister(ENERGY_LIGHT_LSB, 1);
+  return *_lightBuf;
+}
+  
 // This function handles all I2C write commands. It takes the register to write
 // to, then will mask the part of the register that coincides with the
-// setting, and then write the given bits to the register. 
+// given register, and then write the given bits to the register starting at
+// the given start position.  
 void Qwiic_AS3935::writeRegister(uint8_t _reg, uint8_t _mask, uint8_t _bits, uint8_t _startPosition)
 {
 	_i2cPort->beginTransmission(_address); 
