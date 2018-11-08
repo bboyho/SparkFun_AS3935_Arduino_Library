@@ -11,16 +11,14 @@
 
 #include "Sparkfun_AS3935.h"
 
-Sparkfun_AS3935::Sparkfun_AS3935()
+Sparkfun_AS3935::Sparkfun_AS3935(i2cAddress address) : _address(address)
 {
-  //Default settings here
-  // Communication selection?
+  //default settings here
 }
 
-Sparkfun_AS3935::begin( uint8_t address, TwoWire &wirePort )
+void Sparkfun_AS3935::begin( TwoWire &wirePort )
 {
   delay(4); 
-  _address = address; 
   _i2cPort = &wirePort
   _i2cPort->begin(); 
 
@@ -126,9 +124,9 @@ void Sparkfun_AS3935::clearStatistics(bool _clearStat)
 // INT_L (Lightning detected). A third interrupt INT_NH (noise level too HIGH) 
 // indicates that the noise level has been exceeded and will persist until the
 // noise has ended. 
-uint8_t Sparkfun_AS3935::readInterruptReg()
+lightningStatus Sparkfun_AS3935::readInterruptReg()
 {
-    uint8_t __interValue; 
+    lightningStatus _interValue; 
     _interValue = readRegister(INT_MASK_ANT, 15, 4); //Value 1111 or first 4 bits
     return(_interValue); 
 }

@@ -5,41 +5,59 @@
 #include "SPI.h"
 #include "Arduino.h"
 
-enum AS3935_Register {
+enum SF_AS3935_REGISTER_NAMES {
 
-	AFE_GAIN          = 0x00,
-  THRESHOLD         = 0x01,
-  LIGHTNING         = 0x02,
-  INT_MASK_ANT      = 0x03,
-  ENERGY_LIGHT_LSB  = 0x04,
-  ENERGY_LIGHT_MSB  = 0x05,
-  ENERGY_LIGHT_MMSB = 0x06,
-  DISTANCE          = 0x07,
-  FREQ_DISP_IRQ     = 0x08,
+	AFE_GAIN          = 0x00, 
+  THRESHOLD,
+  LIGHTNING,
+  INT_MASK_ANT,
+  ENERGY_LIGHT_LSB,
+  ENERGY_LIGHT_MSB,
+  ENERGY_LIGHT_MMSB,
+  DISTANCE,
+  FREQ_DISP_IRQ
 
 };
 
-#define AS3935_DEFAULT_ADDRESS 0x01
+enum SF_AS3935_REGSTER_MASKS { 
 
-#define NOISE_TO_HIGH     0x01 //B00000001
-#define DISTURBER_DETECT  0x04 //B00000100
-#define LIGHTNING         0x08 //B00001000
-#define INDOOR            0x12
-#define OUTDOOR           0xE
+  GAIN_MASK         = 0xF,
+  SPIKE_MASK        = 0xF,
+  DISTANCE_MASK     = 0x1F,
+  FLOOR_MASK        = 0x07,
+  OSC_MASK          = 0x07,
+  CAP_MASK          = 0x07
+
+};
+
+typedef enum SF_AS3935_I2C_ADDRESS {
+
+ AS3935_DEFAULT_ADDRESS = 0x03, // Default ADD0 and ADD1 are HIGH
+ AS3935_ADDRESS_ADD1_H  = 0x02, // ADD1 HIGH, ADD0 LOW
+ AS3935_ADDRESS_ADD0_H  = 0x01, // ADD1 LOW, ADD0 HIGH
+ AS3935_ADDRESS_LOW     = 0x00  // BOTH LOW 
+
+} i2cAddress;
+
+typedef enum INTERRUPT_STATUS {
+
+  NOISE_TO_HIGH     = 0x01,
+  DISTURBER_DETECT  = 0x04,
+  LIGHTNING         = 0x08
+
+} lightningStatus;  
+
+#define INDOOR  0x12
+#define OUTDOOR 0xE
 
 // Masks for various registers, there are some redundant values that I kept 
 // for the sake of clarity in the code.
-#define GAIN_MASK         0xF
-#define SPIKE_MASK        0xF
-#define DISTANCE_MASK     0x1F
-#define FLOOR_MASK        0x07
-#define OSC_MASK          0x07
-#define CAP_MASK          0x07
 
 class Qwiic_AS3935
 {
   public: 
 
+    void Sparkfun_AS3935::begin( TwoWire &wirePort )
     // REG0x00, bit[0], manufacturer default: 0. 
     // The product consumes 1-2uA while powered down. If the board is powered down 
     // the the TRCO will need to be recalibrated: REG0x08[5] = 1, wait 2 ms, REG0x08[5] = 0.
@@ -112,10 +130,12 @@ class Qwiic_AS3935
   private:
     // This function handles all I2C write commands. It takes the register to write
     // to, then will mask the part of the register that coincides with the
-    // setting, and then write the given bits to the register. 
+    // setting, and then write the given bits to the register at the given
+    // start position. 
     void writeRegister(uint8_t _reg, uint8_t _mask, uint8_t _bits, uint8_t _startPosition);
     // This function reads the given register. 
     uint8_t readRegister(uint8_t reg, uint8_t _len);
+
     TwoWire *_i2cPort; 
 
 };
