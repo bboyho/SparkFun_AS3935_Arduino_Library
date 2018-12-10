@@ -9,7 +9,7 @@
 */
 
 
-#include "Sparkfun_AS3935.h"
+#include "SparkFun_AS3935.h"
 
 Sparkfun_AS3935::Sparkfun_AS3935(i2cAddress address) : _address(address)
 {

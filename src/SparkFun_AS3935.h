@@ -1,5 +1,5 @@
-#ifndef Sparkfun_AS3935_h
-#define Sparkfun_AS3935_h
+#ifndef SparkFun_AS3935_h
+#define SparkFun_AS3935_h
 
 #include "Wire.h"
 #include "SPI.h"
@@ -53,7 +53,7 @@ typedef enum INTERRUPT_STATUS {
 // Masks for various registers, there are some redundant values that I kept 
 // for the sake of clarity in the code.
 
-class Qwiic_AS3935
+class SparkFun_AS3935
 {
   public: 
 
