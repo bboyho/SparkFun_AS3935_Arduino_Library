@@ -57,7 +57,7 @@ class SparkFun_AS3935
 {
   public: 
 
-    void Sparkfun_AS3935::begin( TwoWire &wirePort )
+    void SparkFun_AS3935::begin( TwoWire &wirePort )
     // REG0x00, bit[0], manufacturer default: 0. 
     // The product consumes 1-2uA while powered down. If the board is powered down 
     // the the TRCO will need to be recalibrated: REG0x08[5] = 1, wait 2 ms, REG0x08[5] = 0.
