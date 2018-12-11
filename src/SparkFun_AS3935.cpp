@@ -81,7 +81,7 @@ void SparkFun_AS3935::spikeReduction( uint8_t _spSensitivity )
   if(_spSensitivity < 0 | _spSensitivity > 11)
     return; 
 
-  writeRegister(LIGHTNING, SPIKE_MASK, _spSensitivity, 0); 
+  writeRegister(LIGHTNING_REG, SPIKE_MASK, _spSensitivity, 0); 
 }
 
 
@@ -96,13 +96,13 @@ void SparkFun_AS3935::lightningThreshold( uint8_t _strikes )
     return; 
 
   if( _strikes == 1)
-    writeRegister(LIGHTNING, ((1<<5)|(1<<4)), 0, 4); //Demonstrative
+    writeRegister(LIGHTNING_REG, ((1<<5)|(1<<4)), 0, 4); //Demonstrative
   if( _strikes == 5)
-    writeRegister(LIGHTNING, ((1<<5)|(1<<4)), 1, 4); 
+    writeRegister(LIGHTNING_REG, ((1<<5)|(1<<4)), 1, 4); 
   if( _strikes == 9)
-    writeRegister(LIGHTNING, ((1<<5)|(1<<4)), 1, 5); 
+    writeRegister(LIGHTNING_REG, ((1<<5)|(1<<4)), 1, 5); 
   if( _strikes == 16)
-    writeRegister(LIGHTNING, ((1<<5)|(1<<4)), (1<<5)|(1<<4), 4); 
+    writeRegister(LIGHTNING_REG, ((1<<5)|(1<<4)), (1<<5)|(1<<4), 4); 
 }
 
 
@@ -114,9 +114,9 @@ void SparkFun_AS3935::clearStatistics(bool _clearStat)
   if(_clearStat != true)
     return;
   //Write high, then low, then high to clear.
-  writeRegister(LIGHTNING, (1<<6), 1, 6);
-  writeRegister(LIGHTNING, (1<<6), 0, 6); //Demonstrative
-  writeRegister(LIGHTNING, (1<<6), 1, 6);
+  writeRegister(LIGHTNING_REG, (1<<6), 1, 6);
+  writeRegister(LIGHTNING_REG, (1<<6), 0, 6); //Demonstrative
+  writeRegister(LIGHTNING_REG, (1<<6), 1, 6);
 }
 
 // REG0x03, bits [3:0], manufacturer default: 0. 
