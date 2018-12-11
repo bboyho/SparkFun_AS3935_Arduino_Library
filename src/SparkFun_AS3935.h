@@ -19,6 +19,8 @@ enum SF_AS3935_REGISTER_NAMES {
 
 };
 
+// Masks for various registers, there are some redundant values that I kept 
+// for the sake of clarity.
 enum SF_AS3935_REGSTER_MASKS { 
 
   GAIN_MASK         = 0xF,
@@ -49,15 +51,17 @@ typedef enum INTERRUPT_STATUS {
 
 #define INDOOR  0x12
 #define OUTDOOR 0xE
+uint8_t _lightBuf[3]; 
 
-// Masks for various registers, there are some redundant values that I kept 
-// for the sake of clarity in the code.
 
 class SparkFun_AS3935
 {
   public: 
 
-    void SparkFun_AS3935::begin( TwoWire &wirePort )
+    //Constructor
+    SparkFun_AS3935(i2cAddress address);
+    //Begin
+    void SparkFun_AS3935::begin( TwoWire &wirePort );
     // REG0x00, bit[0], manufacturer default: 0. 
     // The product consumes 1-2uA while powered down. If the board is powered down 
     // the the TRCO will need to be recalibrated: REG0x08[5] = 1, wait 2 ms, REG0x08[5] = 0.
@@ -118,14 +122,14 @@ class SparkFun_AS3935
     // REG0x08, bits [3:0], manufacturer default: 0. 
     // This setting will add capacitance to the series RLC antenna on the product.
     // It's possible to add 0-120pF in steps of 8pF to the antenna. 
-    void tuneCap(uint8_t _farad)
+    void tuneCap(uint8_t _farad);
     // LSB =  REG0x04, bits[7:0]
     // MSB =  REG0x05, bits[7:0]
     // MMSB = REG0x06, bits[4:0]
     // This returns a 20 bit value that is the 'energy' of the lightning strike.
     // According to the datasheet this is only a pure value that doesn't have any
     // physical meaning. 
-    void Qwiic_AS3935::lightningEnergy()
+    uint8_t* lightningEnergy();
   
   private:
     // This function handles all I2C write commands. It takes the register to write

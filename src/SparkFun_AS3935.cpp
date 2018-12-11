@@ -19,8 +19,9 @@ SparkFun_AS3935::SparkFun_AS3935(i2cAddress address) : _address(address)
 void SparkFun_AS3935::begin( TwoWire &wirePort )
 {
   delay(4); 
-  _i2cPort = &wirePort
-  _i2cPort->begin(); 
+  _i2cPort = &wirePort;
+//  _i2cPort->begin(); A call to Wire.begin should occur in sketch to avoid multiple begins with
+//  other sketches
 
   return 1;
 }
@@ -37,7 +38,7 @@ void SparkFun_AS3935::powerDown()
 // This funciton changes toggles the chip's settings for Indoors and Outdoors. 
 void SparkFun_AS3935::indoorOutdoorSetting( uint8_t _setting )
 {
-  if(_setting != INDOOR | _setting != OUTDOOR)
+  if((_setting != INDOOR) | (_setting != OUTDOOR))
     return;
 
   if(_setting == INDOOR)
@@ -113,9 +114,9 @@ void SparkFun_AS3935::clearStatistics(bool _clearStat)
   if(_clearStat != true)
     return;
   //Write high, then low, then high to clear.
-  writeRegister(LIGHTNING, (1<<6), 1, 6)
-  writeRegister(LIGHTNING, (1<<6), 0, 6)//Demonstrative
-  writeRegister(LIGHTNING, (1<<6), 1, 6)
+  writeRegister(LIGHTNING, (1<<6), 1, 6);
+  writeRegister(LIGHTNING, (1<<6), 0, 6); //Demonstrative
+  writeRegister(LIGHTNING, (1<<6), 1, 6);
 }
 
 // REG0x03, bits [3:0], manufacturer default: 0. 
@@ -124,7 +125,7 @@ void SparkFun_AS3935::clearStatistics(bool _clearStat)
 // INT_L (Lightning detected). A third interrupt INT_NH (noise level too HIGH) 
 // indicates that the noise level has been exceeded and will persist until the
 // noise has ended. 
-lightningStatus SparkFun_AS3935::readInterruptReg()
+uint8_t lightningStatus SparkFun_AS3935::readInterruptReg()
 {
     lightningStatus _interValue; 
     _interValue = readRegister(INT_MASK_ANT, 15, 4); //Value 1111 or first 4 bits
@@ -186,6 +187,7 @@ void SparkFun_AS3935::displayOscillator(bool _state, uint8_t _osc)
     if(_osc == 3)
       writeRegister(FREQ_DISP_IRQ, OSC_MASK, 1, 7); 
   }
+
   if(_state == false){
       writeRegister(FREQ_DISP_IRQ, OSC_MASK, 0, 5); //Demonstrative
     if(_osc == 2)
@@ -213,14 +215,13 @@ void SparkFun_AS3935::tuneCap(uint8_t _farad)
 // This returns a 20 bit value that is the 'energy' of the lightning strike.
 // According to the datasheet this is only a pure value that doesn't have any
 // physical meaning. 
-void SparkFun_AS3935::lightningEnergy()
+uint8_t* SparkFun_AS3935::lightningEnergy()
 {
-  uint8_t _lightBuf[3];
   _lightBuf[2] = readRegister(ENERGY_LIGHT_MMSB, 1);
   _lightBuf[2] &= 0xF; //Only interested in the first four bits. 
   _lightBuf[1] = readRegister(ENERGY_LIGHT_MSB, 1);
   _lightBuf[0] = readRegister(ENERGY_LIGHT_LSB, 1);
-  return *_lightBuf;
+  return _lightBuf;
 }
   
 // This function handles all I2C write commands. It takes the register to write
@@ -242,7 +243,7 @@ uint8_t SparkFun_AS3935::readRegister(uint8_t reg, uint8_t _len)
     _i2cPort->beginTransmission(_address); 
     _i2cPort->write(reg); //Moves pointer to register in question and writes to it. 
     _i2cPort->endTransmission(false); //This tells the product 
-    _i2cPort->requestFrom(_address, _len); 
-    uint8_t _regValue = _i2cPort->read(reg); 
+    _i2cPort->requestFrom(_address, _len);
+    uint8_t _regValue = _i2cPort->read(reg);
     return(_regValue);
 }
