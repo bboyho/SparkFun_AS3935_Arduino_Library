@@ -103,7 +103,7 @@ class SparkFun_AS3935
     uint8_t readInterruptReg();
     // REG0x03, bit [5], manufacturere default: 0.
     // This setting will change whether or not disturbers trigger the IRQ Pin. 
-    void maskDisturber(uint8_t _state);
+    void maskDisturber(bool _state);
     // REG0x03, bit [7:6], manufacturer default: 0 (16 division ratio). 
     // The antenna is designed to resonate at 500kHz and so can be tuned with the
     // following setting. The accuracy of the antenna must be within 3.5 percent of
