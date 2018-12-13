@@ -1,9 +1,9 @@
-#ifndef SparkFun_AS3935_h
-#define SparkFun_AS3935_h
+#ifndef _SPARKFUN_AS3935_H_
+#define _SPARKFUN_AS3935_H_
 
-#include "Wire.h"
-#include "SPI.h"
-#include "Arduino.h"
+#include <Wire.h>
+#include <SPI.h>
+#include <Arduino.h>
 
 enum SF_AS3935_REGISTER_NAMES {
 
@@ -51,17 +51,16 @@ typedef enum INTERRUPT_STATUS {
 
 #define INDOOR  0x12
 #define OUTDOOR 0xE
-uint8_t _lightBuf[3]; 
-
 
 class SparkFun_AS3935
 {
   public: 
 
-    //Constructor
+    uint8_t _lightBuf[3]; 
+    // Constructor
     SparkFun_AS3935(i2cAddress address);
-    //Begin
-    void SparkFun_AS3935::begin( TwoWire &wirePort );
+    // Begin
+    int begin( TwoWire &wirePort = Wire );
     // REG0x00, bit[0], manufacturer default: 0. 
     // The product consumes 1-2uA while powered down. If the board is powered down 
     // the the TRCO will need to be recalibrated: REG0x08[5] = 1, wait 2 ms, REG0x08[5] = 0.
@@ -99,7 +98,7 @@ class SparkFun_AS3935
     // with the type of event. This consists of two messages: INT_D (disturber detected) and 
     // INT_L (Lightning detected). A third interrupt INT_NH (noise level too HIGH) 
     // indicates that the noise level has been exceeded and will persist until the
-    // noise has ended. 
+    // noise has ended. Events are active HIGH.  
     uint8_t readInterruptReg();
     // REG0x03, bit [5], manufacturere default: 0.
     // This setting will change whether or not disturbers trigger the IRQ Pin. 
@@ -132,6 +131,8 @@ class SparkFun_AS3935
     uint8_t* lightningEnergy();
   
   private:
+
+    i2cAddress _address; 
     // This function handles all I2C write commands. It takes the register to write
     // to, then will mask the part of the register that coincides with the
     // setting, and then write the given bits to the register at the given
@@ -140,7 +141,7 @@ class SparkFun_AS3935
     // This function reads the given register. 
     uint8_t readRegister(uint8_t reg, uint8_t _len);
 
-    TwoWire *_i2cPort; 
+    TwoWire* _i2cPort; 
 
 };
 #endif

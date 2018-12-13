@@ -11,13 +11,12 @@
 
 #include "SparkFun_AS3935.h"
 
-SparkFun_AS3935::SparkFun_AS3935(i2cAddress address) : _address(address)
-{
-  //default settings here
-}
+//Another constructor with I2C but receives address from user.  
+SparkFun_AS3935::SparkFun_AS3935(i2cAddress address) { _address = address; }
 
-void SparkFun_AS3935::begin( TwoWire &wirePort )
+int SparkFun_AS3935::begin( TwoWire &wirePort )
 {
+  //section in data sheet coudl bve helpful here.
   delay(4); 
   _i2cPort = &wirePort;
 //  _i2cPort->begin(); A call to Wire.begin should occur in sketch to avoid multiple begins with
@@ -52,10 +51,10 @@ void SparkFun_AS3935::indoorOutdoorSetting( uint8_t _setting )
 // IRQ Pin.  
 void SparkFun_AS3935::watchdogThreshold( uint8_t _sensitivity )
 {
-  if( (_sensitiviy < 1) | (_sensitiviy > 10) )// 10 is the max sensitivity setting
+  if( (_sensitivity < 1) | (_sensitivity > 10) )// 10 is the max sensitivity setting
     return; 
 
-  writeRegister(THRESHOLD, GAIN_MASK, _sensitiviy, 1); 
+  writeRegister(THRESHOLD, GAIN_MASK, _sensitivity, 1); 
 }
 
 // REG0x01, bits [6:4], manufacturer default: 010 (2).
@@ -92,7 +91,7 @@ void SparkFun_AS3935::spikeReduction( uint8_t _spSensitivity )
 void SparkFun_AS3935::lightningThreshold( uint8_t _strikes )
 {
 
-  if( (_strikes != 1) | (strikes != 5) | (_strikes != 9) | (_strikes != 16) )
+  if( (_strikes != 1) | (_strikes != 5) | (_strikes != 9) | (_strikes != 16) )
     return; 
 
   if( _strikes == 1)
@@ -124,11 +123,11 @@ void SparkFun_AS3935::clearStatistics(bool _clearStat)
 // with the type of event. This consists of two messages: INT_D (disturber detected) and 
 // INT_L (Lightning detected). A third interrupt INT_NH (noise level too HIGH) 
 // indicates that the noise level has been exceeded and will persist until the
-// noise has ended. 
+// noise has ended. Events are active HIGH.  
 uint8_t SparkFun_AS3935::readInterruptReg()
 {
     lightningStatus _interValue; 
-    _interValue = readRegister(INT_MASK_ANT, 15, 4); //Value 1111 or first 4 bits
+    _interValue = readRegister(INT_MASK_ANT, 4); //Value 1111 or first 4 bits
     return(_interValue); 
 }
 
@@ -232,7 +231,7 @@ void SparkFun_AS3935::writeRegister(uint8_t _reg, uint8_t _mask, uint8_t _bits, 
 {
 	_i2cPort->beginTransmission(_address); 
 	_i2cPort->write(_reg);
-  _i2cPort->write(_reg &= (~mask)); 
+  _i2cPort->write(_reg &= (~_mask)); 
   _i2cPort->write(_reg |= _bits<<_startPosition); 
   _i2cPort->endTransmission(); 
 }
@@ -242,8 +241,8 @@ uint8_t SparkFun_AS3935::readRegister(uint8_t reg, uint8_t _len)
 {
     _i2cPort->beginTransmission(_address); 
     _i2cPort->write(reg); //Moves pointer to register in question and writes to it. 
-    _i2cPort->endTransmission(false); //This tells the product 
+    _i2cPort->endTransmission(false); //'False' here sends a restart message so that bus is not released
     _i2cPort->requestFrom(_address, _len);
-    uint8_t _regValue = _i2cPort->read(reg);
+    uint8_t _regValue = _i2cPort->read();
     return(_regValue);
 }
