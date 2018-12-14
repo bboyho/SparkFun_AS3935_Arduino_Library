@@ -67,7 +67,7 @@ class SparkFun_AS3935
     void powerDown();
     // REG0x00, bits [5:1], manufacturer default: 10010 (INDOOR). 
     // This funciton changes toggles the chip's settings for Indoors and Outdoors. 
-    void indoorOutdoorSetting(uint8_t _setting);
+    void setIndoorOutdoor(uint8_t _setting);
     // REG0x01, bits[3:0], manufacturer default: 0010 (2). 
     // This setting determines the threshold for events that trigger the 
     // IRQ Pin.  
@@ -83,7 +83,7 @@ class SparkFun_AS3935
     // events and actual lightning. The shape of the spike is analyzed during the
     // chip's signal validation routine. Increasing this value increases robustness
     // at the cost of sensitivity to distant events. 
-    void spikeReduction(uint8_t _spSensitivity);
+    void spikeRejection(uint8_t _spSensitivity);
     // REG0x02, bits [5:4], manufacturer default: 0 (single lightning strike).
     // The number of lightning events before IRQ is set high. 15 minutes is The 
     // window of time before the number of detected lightning events is reset. 

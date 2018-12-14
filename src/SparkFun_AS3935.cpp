@@ -17,6 +17,7 @@ SparkFun_AS3935::SparkFun_AS3935(i2cAddress address) { _address = address; }
 int SparkFun_AS3935::begin( TwoWire &wirePort )
 {
   //section in data sheet coudl bve helpful here.
+  //End
   delay(4); 
   _i2cPort = &wirePort;
 //  _i2cPort->begin(); A call to Wire.begin should occur in sketch to avoid multiple begins with
@@ -35,7 +36,7 @@ void SparkFun_AS3935::powerDown()
 
 // REG0x00, bits [5:1], manufacturer default: 10010 (INDOOR). 
 // This funciton changes toggles the chip's settings for Indoors and Outdoors. 
-void SparkFun_AS3935::indoorOutdoorSetting( uint8_t _setting )
+void SparkFun_AS3935::setIndoorOutdoor( uint8_t _setting )
 {
   if((_setting != INDOOR) | (_setting != OUTDOOR))
     return;
@@ -75,7 +76,7 @@ void SparkFun_AS3935::setNoiseLevel( uint8_t _floor )
 // events and actual lightning. The shape of the spike is analyzed during the
 // chip's signal validation routine. Increasing this value increases robustness
 // at the cost of sensitivity to distant events. 
-void SparkFun_AS3935::spikeReduction( uint8_t _spSensitivity )
+void SparkFun_AS3935::spikeRejection( uint8_t _spSensitivity )
 {
   if( (_spSensitivity < 1) | (_spSensitivity > 11) )
     return; 

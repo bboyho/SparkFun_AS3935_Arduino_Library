@@ -11,6 +11,9 @@
 #define DISTURBER_INT 0x04
 #define NOISE_INT 0x01
 #define NOISE_FLOOR 0x02
+#define WATCHDOG_THRESH 0x02
+#define SPIKE 0x02
+
 
 // Instance of our lightning detector.
 SparkFun_AS935 lightning;
@@ -31,6 +34,9 @@ void setup()
   Wire.begin(); // Begin Wire before lightning sensor. 
   lightning.begin(); // Initialize the sensor. 
   
+  // Valid spike rejection values range from 0-13 
+  lightning.spikeReduction(++SPIKE); 
+  lightning.maskDisturber(true); 
   // The lightning detector defaults to an indoor setting (less
   // gain/sensitivity), if you plan on using this outdoors 
   // uncomment the following line:
