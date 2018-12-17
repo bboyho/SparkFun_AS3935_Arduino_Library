@@ -1,6 +1,6 @@
 #include <SPI.h>
 #include <Wire.h>
-#include <Sparkfun_AS3935.h>
+#include "SparkFun_AS3935.h"
 
 // 0x03 is default, but the address can also be 0x02, 0x01, or 0x00
 // Adjust the address jumpers on the underside of the product. 
@@ -10,22 +10,24 @@
 #define LIGHTNING_INT 0x08
 #define DISTURBER_INT 0x04
 #define NOISE_INT 0x01
-#define NOISE_FLOOR 0x02
+uint8_t noiseFloor = 0x02;
+uint8_t * pureEnergy; 
 
 // Instance of our lightning detector.
-SparkFun_AS935 lightning;
+SparkFun_AS3935 lightning(AS3935_ADDR);
 
 // Interrupt pin for lightning detection 
 const uint8_t lightningInt = 1; 
 uint8_t intVal; 
 uint8_t distance; 
+long wat;
 
 void setup()
 {
   // When lightning is detected the interrupt pin goes HIGH.
   pinMode(lightningInt, INPUT); 
 
-  Serial.begin(9600); 
+  Serial.begin(115200); 
   Serial.println("AS3935 Franklin Lightning Detector"); 
 
   Wire.begin(); // Begin Wire before lightning sensor. 
@@ -57,20 +59,46 @@ void loop()
       distance = lightning.distanceToStorm(); 
       Serial.print("Approximately: "); 
       Serial.print(distance); 
-      Serial.print("km away!"); 
+      Serial.println("km away!"); 
+      pureEnergy = lightning.lightningEnergy(); 
+
+      uint8_t temp = &pureEnergy[2];
+      Serial.print("Array: "); 
+      Serial.println(temp, BIN); 
+      wat |= temp << 16;
+      Serial.print("WAT: "); 
+      Serial.println(wat, BIN);
+
+      temp = &pureEnergy[1];
+      Serial.print("Array: "); 
+      Serial.println(temp, BIN); 
+      wat |= temp << 8;
+      Serial.print("WAT: "); 
+      Serial.println(wat, BIN);
+
+      temp = &pureEnergy[0];
+      Serial.print("Array: "); 
+      Serial.println(temp, BIN); 
+      wat |= temp;
+      Serial.print("WAT: "); 
+      Serial.println(wat, BIN);
+
+      Serial.print("Total Energy: "); 
+      Serial.println(wat); 
     }
   }
+  delay(100); //Let's not be too crazy.
 }
 
 // This function helps to adjust the sensor to your environment. More
 // environmental noise leads to more false positives. If you see lots of noise
 // events, try calling this function.  
 void reduceNoise(){
-  ++NOISE_FLOOR; // Manufacturer's default is 2 with a max of 7. 
-  if(NOISE_FLOOR > 7){
+  ++noiseFloor; // Manufacturer's default is 2 with a max of 7. 
+  if(noiseFloor > 7){
     Serial.println("Noise floor is at max!"); 
     return;
   }
-  Serial.println("Increasing the event threshold.")
-  lightning.setNoiseLevel(NOISE_FLOOR):  
+  Serial.println("Increasing the event threshold.");
+  lightning.setNoiseLevel(noiseFloor);  
 }

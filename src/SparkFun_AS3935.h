@@ -56,7 +56,6 @@ class SparkFun_AS3935
 {
   public: 
 
-    uint8_t _lightBuf[3]; 
     // Constructor
     SparkFun_AS3935(i2cAddress address);
     // Begin
@@ -133,6 +132,7 @@ class SparkFun_AS3935
   private:
 
     i2cAddress _address; 
+    uint32_t _lightBuf; 
     // This function handles all I2C write commands. It takes the register to write
     // to, then will mask the part of the register that coincides with the
     // setting, and then write the given bits to the register at the given
