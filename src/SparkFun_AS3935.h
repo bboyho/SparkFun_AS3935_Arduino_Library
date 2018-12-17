@@ -97,7 +97,7 @@ class SparkFun_AS3935
     // with the type of event. This consists of two messages: INT_D (disturber detected) and 
     // INT_L (Lightning detected). A third interrupt INT_NH (noise level too HIGH) 
     // indicates that the noise level has been exceeded and will persist until the
-    // noise has ended. Events are active HIGH. There is a one second timing to
+    // noise has ended. Events are active HIGH. There is a one second window of time to
     // read the interrupt register after lightning is detected, and 1.5 after
     // disturber.  
     uint8_t readInterruptReg();
