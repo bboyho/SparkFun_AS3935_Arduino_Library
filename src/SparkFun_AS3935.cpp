@@ -16,8 +16,9 @@ SparkFun_AS3935::SparkFun_AS3935(i2cAddress address) { _address = address; }
 
 bool SparkFun_AS3935::begin( TwoWire &wirePort )
 {
-  //section in data sheet coudl bve helpful here.
-  //End
+  // Startup time requires 2ms for the LCO and 2ms more for the RC oscillators
+  // which occurs only after the LCO settles. See "Timing" under "Electrical
+  // Characteristics" in the datasheet.  
   delay(4); 
   _i2cPort = &wirePort;
   //  _i2cPort->begin(); A call to Wire.begin should occur in sketch 
@@ -39,6 +40,7 @@ bool SparkFun_AS3935::beginSPI(uint8_t  user_CSPin, SPIClass &spiPort);
     _cs = user_CSPin; 
 
     pinMode(_cs, OUTPUT); 
+    spiPort->begin(); 
 }
 // REG0x00, bit[0], manufacturer default: 0. 
 // The product consumes 1-2uA while powered down. If the board is powered down 
@@ -138,7 +140,9 @@ void SparkFun_AS3935::clearStatistics(bool _clearStat)
 // with the type of event. This consists of two messages: INT_D (disturber detected) and 
 // INT_L (Lightning detected). A third interrupt INT_NH (noise level too HIGH) 
 // indicates that the noise level has been exceeded and will persist until the
-// noise has ended. Events are active HIGH.  
+// noise has ended. Events are active HIGH. There is a one second window of time to
+// read the interrupt register after lightning is detected, and 1.5 after
+// disturber.  
 uint8_t SparkFun_AS3935::readInterruptReg()
 {
     lightningStatus _interValue; 
