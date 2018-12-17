@@ -215,10 +215,10 @@ void SparkFun_AS3935::tuneCap(uint8_t _farad)
 // This returns a 20 bit value that is the 'energy' of the lightning strike.
 // According to the datasheet this is only a pure value that doesn't have any
 // physical meaning. 
-uint8_t* SparkFun_AS3935::lightningEnergy()
+uint32_t SparkFun_AS3935::lightningEnergy()
 {
-  _lightBuf[2] = readRegister(ENERGY_LIGHT_MMSB, 1);
-  _lightBuf[2] &= 0xF; //Only interested in the first four bits. 
+  _lightBuf |= readRegister(ENERGY_LIGHT_MMSB, 1);
+  _lightBuf &= 0xF; //Only interested in the first four bits. 
   _lightBuf[1] = readRegister(ENERGY_LIGHT_MSB, 1);
   _lightBuf[0] = readRegister(ENERGY_LIGHT_LSB, 1);
   return _lightBuf;
