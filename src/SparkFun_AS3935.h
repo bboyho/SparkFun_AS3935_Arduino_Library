@@ -127,12 +127,13 @@ class SparkFun_AS3935
     // This returns a 20 bit value that is the 'energy' of the lightning strike.
     // According to the datasheet this is only a pure value that doesn't have any
     // physical meaning. 
-    uint8_t* lightningEnergy();
+    uint32_t lightningEnergy();
   
   private:
 
     i2cAddress _address; 
-    uint32_t _lightBuf; 
+    uint32_t _pureLight = 0;  
+    uint32_t _tempPE = 0; 
     // This function handles all I2C write commands. It takes the register to write
     // to, then will mask the part of the register that coincides with the
     // setting, and then write the given bits to the register at the given

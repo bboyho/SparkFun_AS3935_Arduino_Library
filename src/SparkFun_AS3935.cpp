@@ -14,18 +14,32 @@
 //Another constructor with I2C but receives address from user.  
 SparkFun_AS3935::SparkFun_AS3935(i2cAddress address) { _address = address; }
 
-int SparkFun_AS3935::begin( TwoWire &wirePort )
+bool SparkFun_AS3935::begin( TwoWire &wirePort )
 {
   //section in data sheet coudl bve helpful here.
   //End
   delay(4); 
   _i2cPort = &wirePort;
-//  _i2cPort->begin(); A call to Wire.begin should occur in sketch to avoid multiple begins with
-//  other sketches
+  //  _i2cPort->begin(); A call to Wire.begin should occur in sketch 
+  //  to avoid multiple begins with other sketches.
 
-  return 1;
+  // A return of 0 indicates success, else an error occurred. 
+  _i2Cport->beginTransmission(_address);
+  uint8_t _ret = _i2Cport->endTransmission(_address);
+  if(!_ret)
+    return true;
+  else
+    return false; 
 }
 
+bool SparkFun_AS3935::beginSPI(uint8_t  user_CSPin, SPIClass &spiPort); 
+{
+    _i2cPort = NULL; 
+    _spiPort = &spiPort; 
+    _cs = user_CSPin; 
+
+    pinMode(_cs, OUTPUT); 
+}
 // REG0x00, bit[0], manufacturer default: 0. 
 // The product consumes 1-2uA while powered down. If the board is powered down 
 // the the TRCO will need to be recalibrated: REG0x08[5] = 1, wait 2 ms, REG0x08[5] = 0.
@@ -217,11 +231,16 @@ void SparkFun_AS3935::tuneCap(uint8_t _farad)
 // physical meaning. 
 uint32_t SparkFun_AS3935::lightningEnergy()
 {
-  _lightBuf |= readRegister(ENERGY_LIGHT_MMSB, 1);
-  _lightBuf &= 0xF; //Only interested in the first four bits. 
-  _lightBuf[1] = readRegister(ENERGY_LIGHT_MSB, 1);
-  _lightBuf[0] = readRegister(ENERGY_LIGHT_LSB, 1);
-  return _lightBuf;
+  _tempPE = readRegister(ENERGY_LIGHT_MMSB, 1);
+  _tempPE &= 0xF; //Only interested in the first four bits. 
+  // Temporary value is large enough to handle a shift of 16 bits.
+  _pureLight = _tempPE << 16; 
+  _tempPE = readRegister(ENERGY_LIGHT_MSB, 1);
+  // Temporary value is large enough to handle a shift of 8 bits.
+  _pureLight |= _tempPE << 8; 
+  // No shift here, directly OR'ed into _pureLight variable.
+  _pureLight |= readRegister(ENERGY_LIGHT_LSB, 1);
+  return _pureLight;
 }
   
 // This function handles all I2C write commands. It takes the register to write

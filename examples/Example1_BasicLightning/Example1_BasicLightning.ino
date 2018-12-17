@@ -10,17 +10,16 @@
 #define LIGHTNING_INT 0x08
 #define DISTURBER_INT 0x04
 #define NOISE_INT 0x01
-uint8_t noiseFloor = 0x02;
-uint8_t * pureEnergy; 
+
 
 // Instance of our lightning detector.
 SparkFun_AS3935 lightning(AS3935_ADDR);
 
 // Interrupt pin for lightning detection 
 const uint8_t lightningInt = 1; 
+uint8_t noiseFloor = 0x02;
 uint8_t intVal; 
 uint8_t distance; 
-long wat;
 
 void setup()
 {
@@ -55,36 +54,11 @@ void loop()
     else if(intVal == LIGHTNING_INT){
       Serial.println("Lightning Strike Detected!"); 
       // Lightning! Now how far away is it? Distance estimation takes into
-      // account previously seen events. 
+      // account any previously seen events in the last 15 seconds. 
       distance = lightning.distanceToStorm(); 
       Serial.print("Approximately: "); 
       Serial.print(distance); 
       Serial.println("km away!"); 
-      pureEnergy = lightning.lightningEnergy(); 
-
-      uint8_t temp = &pureEnergy[2];
-      Serial.print("Array: "); 
-      Serial.println(temp, BIN); 
-      wat |= temp << 16;
-      Serial.print("WAT: "); 
-      Serial.println(wat, BIN);
-
-      temp = &pureEnergy[1];
-      Serial.print("Array: "); 
-      Serial.println(temp, BIN); 
-      wat |= temp << 8;
-      Serial.print("WAT: "); 
-      Serial.println(wat, BIN);
-
-      temp = &pureEnergy[0];
-      Serial.print("Array: "); 
-      Serial.println(temp, BIN); 
-      wat |= temp;
-      Serial.print("WAT: "); 
-      Serial.println(wat, BIN);
-
-      Serial.print("Total Energy: "); 
-      Serial.println(wat); 
     }
   }
   delay(100); //Let's not be too crazy.
