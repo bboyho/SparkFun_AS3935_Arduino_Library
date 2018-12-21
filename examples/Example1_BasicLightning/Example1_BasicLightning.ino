@@ -13,13 +13,17 @@
 
 
 // Instance of our lightning detector.
-SparkFun_AS3935 lightning(AS3935_ADDR);
+// If you using SPI, call without address: 
+SparkFun_AS3935 lightning;
+//SparkFun_AS3935 lightning(AS3935_ADDR);
 
 // Interrupt pin for lightning detection 
-const uint8_t lightningInt = 1; 
+const uint8_t lightningInt = 4; 
 uint8_t noiseFloor = 0x02;
-uint8_t intVal; 
+uint8_t intVal = 0; 
 uint8_t distance; 
+long prevTime; 
+long time; 
 
 void setup()
 {
@@ -28,15 +32,16 @@ void setup()
 
   Serial.begin(115200); 
   Serial.println("AS3935 Franklin Lightning Detector"); 
-
-  Wire.begin(); // Begin Wire before lightning sensor. 
-  lightning.begin(); // Initialize the sensor. 
   
+  //Wire.begin(); // Begin Wire before lightning sensor. 
+  //lightning.begin(); // Initialize the sensor. 
+  uint8_t confirm = lightning.beginSPI(9, 2000000); 
+  Serial.print("Did we start: "); 
+  Serial.println(confirm); 
   // The lightning detector defaults to an indoor setting (less
   // gain/sensitivity), if you plan on using this outdoors 
   // uncomment the following line:
   //lightning.setIndoorOutdoor(OUTDOOR); 
-  
 }
 
 void loop()

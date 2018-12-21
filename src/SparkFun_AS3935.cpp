@@ -11,7 +11,10 @@
 
 #include "SparkFun_AS3935.h"
 
-//Another constructor with I2C but receives address from user.  
+// Default constructor, to be used with SPI
+SparkFun_AS3935::SparkFun_AS3935() { }
+
+// Another constructor with I2C but receives address from user.  
 SparkFun_AS3935::SparkFun_AS3935(i2cAddress address) { _address = address; }
 
 bool SparkFun_AS3935::begin( TwoWire &wirePort )
@@ -25,22 +28,27 @@ bool SparkFun_AS3935::begin( TwoWire &wirePort )
   //  to avoid multiple begins with other sketches.
 
   // A return of 0 indicates success, else an error occurred. 
-  _i2Cport->beginTransmission(_address);
-  uint8_t _ret = _i2Cport->endTransmission(_address);
+  _i2cPort->beginTransmission(_address);
+  uint8_t _ret = _i2cPort->endTransmission(_address);
   if(!_ret)
     return true;
   else
     return false; 
 }
 
-bool SparkFun_AS3935::beginSPI(uint8_t  user_CSPin, SPIClass &spiPort); 
+bool SparkFun_AS3935::beginSPI(uint8_t user_CSPin, uint32_t spiPortSpeed, SPIClass &spiPort) 
 {
+    delay(4);
+    // I'll be using this as my indicator that SPI is to be used and not I2C.   
     _i2cPort = NULL; 
-    _spiPort = &spiPort; 
-    _cs = user_CSPin; 
 
+    _spiPort = &spiPort; 
+    _spiPortSpeed = spiPortSpeed;
+    _cs = user_CSPin;
     pinMode(_cs, OUTPUT); 
-    spiPort->begin(); 
+    digitalWrite(_cs, HIGH);// Deselect the Lightning Detector. 
+    _spiPort->begin(); // Set up the SPI pins. 
+    return true; 
 }
 // REG0x00, bit[0], manufacturer default: 0. 
 // The product consumes 1-2uA while powered down. If the board is powered down 
@@ -145,8 +153,13 @@ void SparkFun_AS3935::clearStatistics(bool _clearStat)
 // disturber.  
 uint8_t SparkFun_AS3935::readInterruptReg()
 {
+    // A 2ms delay is added to allow for the memory register to be populated 
+    // after the interrupt pin goes HIGH. See "Interrupt Management" in
+    // datasheet. 
+    delay(2);
     lightningStatus _interValue; 
-    _interValue = readRegister(INT_MASK_ANT, 4); //Value 1111 or first 4 bits
+    _interValue = readRegister(INT_MASK_ANT, 1); 
+    _interValue &= (~INT_MASK); // Only need the first four bits [3:0]
     return(_interValue); 
 }
 
@@ -185,6 +198,7 @@ void SparkFun_AS3935::antennaTuning(uint8_t _divisionRatio)
 uint8_t SparkFun_AS3935::distanceToStorm()
 {
   uint8_t _dist = readRegister(DISTANCE, 1); 
+  _dist &= (~DISTANCE_MASK); 
   return(_dist); 
 }
 // REG0x08, bits [5,6,7], manufacturer default: 0. 
@@ -236,8 +250,8 @@ void SparkFun_AS3935::tuneCap(uint8_t _farad)
 uint32_t SparkFun_AS3935::lightningEnergy()
 {
   _tempPE = readRegister(ENERGY_LIGHT_MMSB, 1);
-  _tempPE &= 0xF; //Only interested in the first four bits. 
-  // Temporary value is large enough to handle a shift of 16 bits.
+  _tempPE &= (~ENERGY_MASK); //Only interested in the first four bits. 
+  // Temporary Value is large enough to handle a shift of 16 bits.
   _pureLight = _tempPE << 16; 
   _tempPE = readRegister(ENERGY_LIGHT_MSB, 1);
   // Temporary value is large enough to handle a shift of 8 bits.
@@ -253,20 +267,52 @@ uint32_t SparkFun_AS3935::lightningEnergy()
 // the given start position.  
 void SparkFun_AS3935::writeRegister(uint8_t _reg, uint8_t _mask, uint8_t _bits, uint8_t _startPosition)
 {
-	_i2cPort->beginTransmission(_address); 
-	_i2cPort->write(_reg);
-  _i2cPort->write(_reg &= (~_mask)); 
-  _i2cPort->write(_reg |= _bits<<_startPosition); 
-  _i2cPort->endTransmission(); 
+  if(_i2cPort == NULL) {
+
+    _spiWrite |= (_reg &= (~_mask)); // Prep data to write - clear register
+    _spiWrite |= (_reg |= (_bits << _startPosition)); // More prep - add bits .
+    (uint16_t)_reg; // Change register to 16 bits, to make space for the data to send
+    _reg = _reg << 8; // Move register address to MSB. 
+    _reg |= _spiWrite; // OR in the data at LSB. 
+
+    _spiPort->beginTransaction(SPISettings(_spiPortSpeed, MSBFIRST, SPI_MODE1)); 
+    digitalWrite(_cs, LOW); // Start communication
+    _spiPort->transfer(_reg); // Varaible contains register and data-to-write.
+    digitalWrite(_cs, HIGH); // End communcation
+    _spiPort->endTransaction();
+  }
+  else { 
+    _i2cPort->beginTransmission(_address); // Start communication.
+    _i2cPort->write(_reg); // at register....
+    _i2cPort->write(_reg &= (~_mask)); // mask register...
+    _i2cPort->write(_reg |= _bits <<_startPosition); // write to register.
+    _i2cPort->endTransmission(); // End communcation.
+  }
 }
 
 // This function reads the given register. 
-uint8_t SparkFun_AS3935::readRegister(uint8_t reg, uint8_t _len)
+uint8_t SparkFun_AS3935::readRegister(uint8_t _reg, uint8_t _len)
 {
+
+  if(_i2cPort == NULL) {
+    _spiPort->beginTransaction(SPISettings(_spiPortSpeed, MSBFIRST, SPI_MODE1)); 
+    digitalWrite(_cs, LOW); // Start communication.
+    _spiPort->transfer(_reg |= SPI_READ_M);  // Something like this: register OR'ed with SPI read command. 
+    _regValue = _spiPort->transfer(0); // Get data from register.  
+    // According to datsheet, the chip select must be written HIGH, LOW, HIGH
+    // to correctly end the READ command. 
+    digitalWrite(_cs, HIGH); 
+    digitalWrite(_cs, LOW); 
+    digitalWrite(_cs, HIGH); 
+    _spiPort->endTransaction();
+    return(_regValue); 
+  }
+  else {
     _i2cPort->beginTransmission(_address); 
-    _i2cPort->write(reg); //Moves pointer to register in question and writes to it. 
+    _i2cPort->write(_reg); //Moves pointer to register in question and writes to it. 
     _i2cPort->endTransmission(false); //'False' here sends a restart message so that bus is not released
     _i2cPort->requestFrom(_address, _len);
-    uint8_t _regValue = _i2cPort->read();
+    _regValue = _i2cPort->read();
     return(_regValue);
+  }
 }

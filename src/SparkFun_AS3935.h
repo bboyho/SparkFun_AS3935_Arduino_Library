@@ -25,10 +25,13 @@ enum SF_AS3935_REGSTER_MASKS {
 
   GAIN_MASK         = 0xF,
   SPIKE_MASK        = 0xF,
-  DISTANCE_MASK     = 0x1F,
+  DISTANCE_MASK     = 0xC0,
+  INT_MASK          = 0xF0, 
+  ENERGY_MASK       = 0xF0, 
   FLOOR_MASK        = 0x07,
   OSC_MASK          = 0x07,
-  CAP_MASK          = 0x07
+  CAP_MASK          = 0x07, 
+  SPI_READ_M        = 0x40 
 
 };
 
@@ -56,10 +59,14 @@ class SparkFun_AS3935
 {
   public: 
 
-    // Constructor
+    // Constructor to be used with SPI
+    SparkFun_AS3935();
+    // Constructor to be used with I-squared-C. 
     SparkFun_AS3935(i2cAddress address);
-    // Begin
-    int begin( TwoWire &wirePort = Wire );
+    // I-squared-C Begin
+    bool begin(TwoWire &wirePort = Wire);
+    // SPI begin 
+    bool beginSPI(uint8_t user_CSPin, uint32_t spiPortSpeed, SPIClass &spiPort = SPI); 
     // REG0x00, bit[0], manufacturer default: 0. 
     // The product consumes 1-2uA while powered down. If the board is powered down 
     // the the TRCO will need to be recalibrated: REG0x08[5] = 1, wait 2 ms, REG0x08[5] = 0.
@@ -133,18 +140,26 @@ class SparkFun_AS3935
   
   private:
 
+    uint32_t _pureLight = 0; // Variable for lightning energy which is just a pure number.  
+    uint32_t _tempPE = 0; // Temp variable for lightning energy. 
+    uint32_t _spiPortSpeed; // Given sport speed. 
+    uint8_t _cs; // Chip select pin
+    uint8_t _regValue; // Variable for returned register data. 
+    uint8_t _spiWrite; // Variable used for SPI write commands. 
+    
+    // Address variable. 
     i2cAddress _address; 
-    uint32_t _pureLight = 0;  
-    uint32_t _tempPE = 0; 
     // This function handles all I2C write commands. It takes the register to write
     // to, then will mask the part of the register that coincides with the
     // setting, and then write the given bits to the register at the given
     // start position. 
     void writeRegister(uint8_t _reg, uint8_t _mask, uint8_t _bits, uint8_t _startPosition);
     // This function reads the given register. 
-    uint8_t readRegister(uint8_t reg, uint8_t _len);
-
-    TwoWire* _i2cPort; 
+    uint8_t readRegister(uint8_t _reg, uint8_t _len);
+    
+    // I-squared-C and SPI Classes
+    TwoWire *_i2cPort; 
+    SPIClass *_spiPort; 
 
 };
 #endif
