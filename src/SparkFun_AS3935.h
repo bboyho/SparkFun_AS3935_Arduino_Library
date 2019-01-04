@@ -145,8 +145,8 @@ class SparkFun_AS3935
     uint32_t _spiPortSpeed; // Given sport speed. 
     uint8_t _cs; // Chip select pin
     uint8_t _regValue; // Variable for returned register data. 
-    uint8_t _spiWrite; // Variable used for SPI write commands. 
-    
+    uint8_t _spiWrite = 0; // Variable used for SPI write commands. 
+    uint8_t _i2cWrite = 0; // Variable used for SPI write commands. 
     // Address variable. 
     i2cAddress _address; 
     // This function handles all I2C write commands. It takes the register to write

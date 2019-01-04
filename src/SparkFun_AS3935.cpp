@@ -2,7 +2,7 @@
   This is a library for the ASM AS3935 Franklin Lightning Detector
   By: Elias Santistevan
   SparkFun Electronics
-  Date: October, 2018
+  Date: January, 2019
   License: This code is public domain but you buy me a beer if you use this and we meet someday (Beerware license).
 
   Feel like supporting our work? Buy a board from SparkFun!
@@ -29,7 +29,7 @@ bool SparkFun_AS3935::begin( TwoWire &wirePort )
 
   // A return of 0 indicates success, else an error occurred. 
   _i2cPort->beginTransmission(_address);
-  uint8_t _ret = _i2cPort->endTransmission(_address);
+  uint8_t _ret = _i2cPort->endTransmission();
   if(!_ret)
     return true;
   else
@@ -265,27 +265,26 @@ uint32_t SparkFun_AS3935::lightningEnergy()
 // to, then will mask the part of the register that coincides with the
 // given register, and then write the given bits to the register starting at
 // the given start position.  
-void SparkFun_AS3935::writeRegister(uint8_t _reg, uint8_t _mask, uint8_t _bits, uint8_t _startPosition)
+void SparkFun_AS3935::writeRegister(uint8_t _wReg, uint8_t _mask, uint8_t _bits, uint8_t _startPosition)
 {
   if(_i2cPort == NULL) {
-
-    _spiWrite |= (_reg &= (~_mask)); // Prep data to write - clear register
-    _spiWrite |= (_reg |= (_bits << _startPosition)); // More prep - add bits .
-    (uint16_t)_reg; // Change register to 16 bits, to make space for the data to send
-    _reg = _reg << 8; // Move register address to MSB. 
-    _reg |= _spiWrite; // OR in the data at LSB. 
-
+    _spiWrite = readRegister(_wReg, 1); // Get the current value of the register
+    _spiWrite &= (~_mask); // Mask the position we want to write to
+    _spiWrite |= (_bits << _startPosition); // Write the given bits to the register
     _spiPort->beginTransaction(SPISettings(_spiPortSpeed, MSBFIRST, SPI_MODE1)); 
     digitalWrite(_cs, LOW); // Start communication
-    _spiPort->transfer(_reg); // Varaible contains register and data-to-write.
+    _spiPort->transfer(_wReg); // Start write command at given register
+    _spiPort->transfer(_spiWrite); // Write to register
     digitalWrite(_cs, HIGH); // End communcation
     _spiPort->endTransaction();
   }
   else { 
+    _i2cWrite = readRegister(_wReg, 1); // Get the current value of the register
+    _i2cWrite &= (~_mask); // Mask the position we want to write to.
+    _i2cWrite |= (_bits << _startPosition);  // Write the given bits to the register
     _i2cPort->beginTransmission(_address); // Start communication.
-    _i2cPort->write(_reg); // at register....
-    _i2cPort->write(_reg &= (~_mask)); // mask register...
-    _i2cPort->write(_reg |= _bits <<_startPosition); // write to register.
+    _i2cPort->write(_wReg); // at register....
+    _i2cPort->write(_i2cWrite); // Write register...
     _i2cPort->endTransmission(); // End communcation.
   }
 }
@@ -297,7 +296,7 @@ uint8_t SparkFun_AS3935::readRegister(uint8_t _reg, uint8_t _len)
   if(_i2cPort == NULL) {
     _spiPort->beginTransaction(SPISettings(_spiPortSpeed, MSBFIRST, SPI_MODE1)); 
     digitalWrite(_cs, LOW); // Start communication.
-    _spiPort->transfer(_reg |= SPI_READ_M);  // Something like this: register OR'ed with SPI read command. 
+    _spiPort->transfer(_reg |= SPI_READ_M);  // Register OR'ed with SPI read command. 
     _regValue = _spiPort->transfer(0); // Get data from register.  
     // According to datsheet, the chip select must be written HIGH, LOW, HIGH
     // to correctly end the READ command. 
@@ -309,9 +308,9 @@ uint8_t SparkFun_AS3935::readRegister(uint8_t _reg, uint8_t _len)
   }
   else {
     _i2cPort->beginTransmission(_address); 
-    _i2cPort->write(_reg); //Moves pointer to register in question and writes to it. 
-    _i2cPort->endTransmission(false); //'False' here sends a restart message so that bus is not released
-    _i2cPort->requestFrom(_address, _len);
+    _i2cPort->write(_reg); // Moves pointer to register.
+    _i2cPort->endTransmission(false); // 'False' here sends a restart message so that bus is not released
+    _i2cPort->requestFrom(_address, _len); // Read the register.
     _regValue = _i2cPort->read();
     return(_regValue);
   }
