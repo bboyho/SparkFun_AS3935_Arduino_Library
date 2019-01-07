@@ -38,24 +38,44 @@ bool SparkFun_AS3935::begin( TwoWire &wirePort )
 
 bool SparkFun_AS3935::beginSPI(uint8_t user_CSPin, uint32_t spiPortSpeed, SPIClass &spiPort) 
 {
-    delay(4);
-    // I'll be using this as my indicator that SPI is to be used and not I2C.   
-    _i2cPort = NULL; 
-
-    _spiPort = &spiPort; 
-    _spiPortSpeed = spiPortSpeed;
-    _cs = user_CSPin;
-    pinMode(_cs, OUTPUT); 
-    digitalWrite(_cs, HIGH);// Deselect the Lightning Detector. 
-    _spiPort->begin(); // Set up the SPI pins. 
-    return true; 
+  // Startup time requires 2ms for the LCO and 2ms more for the RC oscillators
+  // which occurs only after the LCO settles. See "Timing" under "Electrical
+  // Characteristics" in the datasheet.  
+  delay(4);
+  // I'll be using this as my indicator that SPI is to be used and not I2C.   
+  _i2cPort = NULL; 
+  _spiPort = &spiPort; 
+  _spiPortSpeed = spiPortSpeed; // Make sure it's not 500kHz or it will cause feedback with antenna.
+  _cs = user_CSPin;
+  pinMode(_cs, OUTPUT); 
+  digitalWrite(_cs, HIGH);// Deselect the Lightning Detector. 
+  _spiPort->begin(); // Set up the SPI pins. 
+  return true; 
 }
 // REG0x00, bit[0], manufacturer default: 0. 
 // The product consumes 1-2uA while powered down. If the board is powered down 
 // the the TRCO will need to be recalibrated: REG0x08[5] = 1, wait 2 ms, REG0x08[5] = 0.
+// SPI and I-squared-C remain active when the chip is powered down. 
 void SparkFun_AS3935::powerDown()
 {
   writeRegister(AFE_GAIN, 0x1, 1, 0); 
+}
+
+// REG0x3A bit[7].
+// This register holds the state of the timer RC oscillator (TRCO),
+// after it has been calibrated. The TRCO in this case needs to be recalibrated
+// after power down. The following function wakes the IC, sends the "Direct Command" to 
+// CALIB_RCO register REG0x3D, waits 2ms and then checks that it has been successfully
+// calibrated. Note that I-squared-C and SPI are active during power down. 
+bool SparkFun_AS3935::wakeUp()
+{
+  writeRegister(AFE_GAIN, 0x1, 0, 0); // Set the power down bit to zero to wake it up
+  writeRegister(CALIB_RCO, 0x0, DIRECT_COMMAND, 0); // Send command to calibrate the oscillators 
+  delay(2); // Give time for the internal oscillators to start up.  
+  if( readRegister(CALIB_SRCO, 1) && CALIB_MASK ) 
+    return true;
+  else
+    return false; 
 }
 
 // REG0x00, bits [5:1], manufacturer default: 10010 (INDOOR). 
@@ -270,7 +290,7 @@ void SparkFun_AS3935::writeRegister(uint8_t _wReg, uint8_t _mask, uint8_t _bits,
   if(_i2cPort == NULL) {
     _spiWrite = readRegister(_wReg, 1); // Get the current value of the register
     _spiWrite &= (~_mask); // Mask the position we want to write to
-    _spiWrite |= (_bits << _startPosition); // Write the given bits to the register
+    _spiWrite |= (_bits << _startPosition); // Write the given bits to the variable
     _spiPort->beginTransaction(SPISettings(_spiPortSpeed, MSBFIRST, SPI_MODE1)); 
     digitalWrite(_cs, LOW); // Start communication
     _spiPort->transfer(_wReg); // Start write command at given register
@@ -281,7 +301,7 @@ void SparkFun_AS3935::writeRegister(uint8_t _wReg, uint8_t _mask, uint8_t _bits,
   else { 
     _i2cWrite = readRegister(_wReg, 1); // Get the current value of the register
     _i2cWrite &= (~_mask); // Mask the position we want to write to.
-    _i2cWrite |= (_bits << _startPosition);  // Write the given bits to the register
+    _i2cWrite |= (_bits << _startPosition);  // Write the given bits to the variable
     _i2cPort->beginTransmission(_address); // Start communication.
     _i2cPort->write(_wReg); // at register....
     _i2cPort->write(_i2cWrite); // Write register...

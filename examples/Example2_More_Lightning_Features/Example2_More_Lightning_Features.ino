@@ -19,8 +19,11 @@
 SparkFun_AS3935 lightning(AS3935_ADDR);
 
 // Interrupt pin for lightning detection 
+// Interrupt pin for lightning detection 
 const uint8_t lightningInt = 4; 
 uint8_t noiseFloor = 0x02;
+uint8_t watchDogVal = 0x02;
+uint8_t spike = 0x02;
 uint8_t intVal = 0; 
 uint8_t distance = 0; 
 uint8_t startup = 0; 
@@ -30,9 +33,9 @@ void setup()
   // When lightning is detected the interrupt pin goes HIGH.
   pinMode(lightningInt, INPUT); 
 
-  Serial.begin(115200); 
+  Serial.begin(9600); 
   Serial.println("AS3935 Franklin Lightning Detector"); 
-  //SPI.begin() 
+  // SPI.begin() // For SPI
   Wire.begin(); // Begin Wire before lightning sensor. 
   startup = lightning.begin(); // Initialize the sensor. 
   //startup = lightning.beginSPI(9, 2000000); 
@@ -43,10 +46,17 @@ void setup()
   }
   else
     Serial.println("Schmow-ZoW (Yes)!");
+  
+  // "Disturbers" are events that are false lightning events. If you find
+  // yourself seeing a lot of disturbers you can have the chip not report those
+  // events on the interrupt lines. 
+  //lightning.maskDisturber(true); 
+
   // The lightning detector defaults to an indoor setting (less
   // gain/sensitivity), if you plan on using this outdoors 
   // uncomment the following line:
   //lightning.setIndoorOutdoor(OUTDOOR); 
+  
 }
 
 void loop()
@@ -57,7 +67,7 @@ void loop()
     intVal = lightning.readInterruptReg();
     if(intVal == NOISE_INT){
       Serial.println("Noise."); 
-      //reduceNoise(); //See note below above reduceNoise function.
+      // reduceNoise();  See note below above function definition.
     }
     else if(intVal == DISTURBER_INT){
       Serial.println("Disturber."); 
@@ -65,14 +75,19 @@ void loop()
     else if(intVal == LIGHTNING_INT){
       Serial.println("Lightning Strike Detected!"); 
       // Lightning! Now how far away is it? Distance estimation takes into
-      // account any previously seen events in the last 15 seconds. 
+      // account previously seen events. 
       distance = lightning.distanceToStorm(); 
       Serial.print("Approximately: "); 
       Serial.print(distance); 
-      Serial.println("km away!"); 
+      Serial.print("km away!"); 
+      // "Lightning Energy" and I do place into quotes intentionally, is a pure
+      // number that does not have any physical meaning. 
+      //lightEnergy = mylight.lightningEnergy(); 
+      //Serial.print("Lightning Energy: "); 
+      //Serial.println(lightEnergy); 
+
     }
   }
-  delay(100); //Let's not be too crazy.
 }
 
 // This function helps to adjust the sensor to your environment. More
@@ -81,7 +96,8 @@ void loop()
 // function call under the if statement checking for noise. The datsheet
 // warns that smartphone and smart watch displays, DC-DC converters, and/or
 // anything that operates in 500 kHz range are noise sources to be avoided. 
-void reduceNoise(){
+void reduceNoise()
+{
   ++noiseFloor; // Manufacturer's default is 2 with a max of 7. 
   if(noiseFloor > 7){
     Serial.println("Noise floor is at max!"); 
@@ -89,4 +105,49 @@ void reduceNoise(){
   }
   Serial.println("Increasing the event threshold.");
   lightning.setNoiseLevel(noiseFloor);  
+}
+
+// This function increases the threshold for events that are displayed on the
+// interrupt pin. Increase value means more powerful events will need to occur
+// to be cause the interrupt pin to go high. 
+void increaseWatchdog()
+{
+  ++watchDogVal; // Starting at defult for demonstrative purposes and so we'll need to increase value before we write it. 
+  if(watchDogVal > 7){
+    Serial.println("Watchdog threshold is already at max."); 
+    return; 
+  }
+  lightning.watchdogThreshold(watchDogVal); 
+}
+
+// This function like the watchdog above can help with to tune your detector to
+// more accurate readings. The shape of the pike is analyzed during the chip's
+// validation routine. You can round this spike at the cost of sensitivity to
+// distant events. 
+void dullTheSpike()
+{
+  ++spike; 
+  if(spike > 11) { 
+    Serial.println("Spike reduction is at mask!"); 
+    return; 
+  }
+  lightning.spikeRejection(spike); 
+}
+
+// The following two functions should be called as a pair. If you're powering
+// the IC down, then you should probably wake it up ;). The IC will consume
+// 1-2uA while powered down. 
+void powerICDown()
+{
+  Serial.println("Powering down the IC for deep sleep."); 
+  lightning.powerDown(); 
+}
+
+void wakeItUP()
+{
+  Serial.println("Waking it up!"); 
+  if( lightning.wakeUp() ) 
+    Serial.println("Successfully woken up!");  
+  else 
+    Serial.println("Error recalibrating internal osciallator on wake up."); 
 }

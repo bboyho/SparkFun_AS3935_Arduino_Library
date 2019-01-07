@@ -15,7 +15,11 @@ enum SF_AS3935_REGISTER_NAMES {
   ENERGY_LIGHT_MSB,
   ENERGY_LIGHT_MMSB,
   DISTANCE,
-  FREQ_DISP_IRQ
+  FREQ_DISP_IRQ,
+  CALIB_TRCO        = 0x3A, 
+  CALIB_SRCO        = 0x3B,
+  DEFAULT_RESET     = 0x3C,
+  CALIB_RCO         = 0x3D 
 
 };
 
@@ -31,7 +35,8 @@ enum SF_AS3935_REGSTER_MASKS {
   FLOOR_MASK        = 0x07,
   OSC_MASK          = 0x07,
   CAP_MASK          = 0x07, 
-  SPI_READ_M        = 0x40 
+  SPI_READ_M        = 0x40,
+  CALIB_MASK        = 0x7F
 
 };
 
@@ -54,11 +59,11 @@ typedef enum INTERRUPT_STATUS {
 
 #define INDOOR  0x12
 #define OUTDOOR 0xE
+#define DIRECT_COMMAND 0x96
 
 class SparkFun_AS3935
 {
   public: 
-
     // Constructor to be used with SPI
     SparkFun_AS3935();
     // Constructor to be used with I-squared-C. 
@@ -70,7 +75,15 @@ class SparkFun_AS3935
     // REG0x00, bit[0], manufacturer default: 0. 
     // The product consumes 1-2uA while powered down. If the board is powered down 
     // the the TRCO will need to be recalibrated: REG0x08[5] = 1, wait 2 ms, REG0x08[5] = 0.
+    // SPI and I-squared-C remain active when the chip is powered down. 
     void powerDown();
+    // REG0x3A bit[7].
+    // This register holds the state of the timer RC oscillator (TRCO),
+    // after it has been calibrated. The TRCO will need to be recalibrated
+    // after power down. The following function wakes the IC, sends the "Direct Command" to 
+    // CALIB_RCO register REG0x3D, waits 2ms and then checks that it has been successfully
+    // calibrated. Note that I-squared-C and SPI are active during power down. 
+    bool SparkFun_AS3935::wakeUp();
     // REG0x00, bits [5:1], manufacturer default: 10010 (INDOOR). 
     // This funciton changes toggles the chip's settings for Indoors and Outdoors. 
     void setIndoorOutdoor(uint8_t _setting);
